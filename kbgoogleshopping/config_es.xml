@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<module>
+    <name>kbgoogleshopping</name>
+    <displayName><![CDATA[google Shopping]]></displayName>
+    <version><![CDATA[2.0.8]]></version>
+    <description><![CDATA[Una caracter&iacute;stica que permite due&ntilde;o de la tienda para cargar sus productos en Google Shopping.]]></description>
+    <author><![CDATA[Knowband]]></author>
+    <tab><![CDATA[market_place]]></tab>
+	<confirmUninstall><![CDATA[Estas seguro que lo quieres desinstalar ?]]></confirmUninstall>
+    <is_configurable>0</is_configurable>
+    <need_instance>0</need_instance>
+	<limited_countries></limited_countries>
+</module>

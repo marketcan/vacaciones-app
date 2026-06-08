@@ -1,0 +1,17 @@
+{
+  "short_name": "Multigasto",
+  "name": "Multigasto - Control de Gastos",
+  "icons": [
+    {
+      "src": "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%236366f1'/><path d='M30 40h40v40H30z' fill='none' stroke='white' stroke-width='8'/><path d='M40 40V30a10 10 0 0 1 20 0v10' fill='none' stroke='white' stroke-width='8'/><path d='M30 55h40M30 70h40' stroke='rgba(255,255,255,0.3)' stroke-width='4'/></svg>",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "./index.html",
+  "background_color": "#0f172a",
+  "theme_color": "#6366f1",
+  "display": "standalone",
+  "orientation": "portrait"
+}

@@ -4,7 +4,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Vacaciones App - Control de Gastos</title>
+    <title>Multigasto</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#6366f1">
     <!-- Favicon -->
     <link rel="icon"
         href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2220%22 fill=%22%236366f1%22/><path d=%22M30 40h40v40H30z%22 fill=%22none%22 stroke=%22white%22 stroke-width=%228%22/><path d=%22M40 40V30a10 10 0 0 1 20 0v10%22 fill=%22none%22 stroke=%22white%22 stroke-width=%228%22/><path d=%22M30 55h40M30 70h40%22 stroke=%22rgba(255,255,255,0.3)%22 stroke-width=%224%22/></svg>">
@@ -38,7 +40,6 @@
                 radial-gradient(circle at bottom right, #0f172a, transparent);
             color: var(--text);
             min-height: 100vh;
-            padding-bottom: calc(70px + env(safe-area-inset-bottom));
         }
 
         header {
@@ -62,6 +63,7 @@
 
         main {
             padding: 1rem;
+            padding-bottom: calc(85px + env(safe-area-inset-bottom));
             max-width: 600px;
             margin: 0 auto;
         }
@@ -176,12 +178,6 @@
 
         .btn-primary:hover {
             background: var(--primary-hover);
-        }
-
-        .btn-scan {
-            background: linear-gradient(45deg, #7c3aed, #db2777);
-            color: white;
-            margin-bottom: 1rem;
         }
 
         .btn-secondary {
@@ -304,13 +300,6 @@
         .toast-info {
             background: var(--primary);
             color: white;
-        }
-
-        #camera-preview {
-            width: 100%;
-            border-radius: 0.5rem;
-            display: none;
-            margin-bottom: 1rem;
         }
 
         .currency-row {
@@ -660,6 +649,109 @@
         #app-container.show {
             display: block;
         }
+
+        .admin-only {
+            display: none;
+        }
+
+        .admin-only.show {
+            display: block;
+        }
+
+        .permission-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.5rem;
+            margin: 0.75rem 0;
+        }
+
+        .permission-grid label {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid var(--glass-border);
+            border-radius: 0.5rem;
+            padding: 0.5rem;
+            margin: 0;
+        }
+
+        .permission-grid input {
+            width: auto;
+        }
+
+        /* Config Subtabs Styling */
+        .subtabs {
+            display: flex;
+            flex-wrap: wrap;          /* Desktop: se parte en dos filas si hace falta */
+            gap: 0.4rem;
+            margin-bottom: 1.2rem;
+            border-bottom: 1px solid var(--glass-border);
+            padding-bottom: 0.5rem;
+        }
+
+        /* Mobile: scroll horizontal en lugar de wrap */
+        @media (max-width: 480px) {
+            .subtabs {
+                flex-wrap: nowrap;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+                scrollbar-width: none;
+                -ms-overflow-style: none;
+            }
+            .subtabs::-webkit-scrollbar { display: none; }
+        }
+
+        /* Desktop: stretch subtabs and increase font size to fill width */
+        @media (min-width: 481px) {
+            .subtabs {
+                flex-wrap: nowrap;
+            }
+            .subtab-btn {
+                flex: 1;
+                text-align: center;
+                font-size: 0.95rem !important;
+                padding: 0.3rem 0.5rem !important;
+            }
+        }
+
+        .subtab-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-dim);
+            padding: 0.45rem 0.75rem;
+            font-size: 0.8rem;
+            font-weight: 500;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.2s;
+        }
+
+        .subtab-btn:hover {
+            color: var(--text);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .subtab-btn.active {
+            color: var(--accent);
+            background: rgba(34, 211, 238, 0.12);
+            font-weight: 600;
+        }
+
+        /* Adjust display block behavior of admin-only class for subtab buttons */
+        .admin-only.show.subtab-btn {
+            display: inline-block !important;
+        }
+
+        .config-tab-content {
+            display: none;
+            animation: fadeIn 0.2s ease-out;
+        }
+
+        .config-tab-content.active {
+            display: block;
+        }
     </style>
 </head>
 
@@ -668,13 +760,15 @@
     <div id="login-screen">
         <div class="login-container">
             <img src="https://brasil.marketapp.com.ar/logo_marketapp.png" class="login-logo" alt="MarketApp Logo">
-            <h1 class="login-title">Vacaciones Brasil</h1>
+            <h1 class="login-title">Multigasto</h1>
             <div class="login-card">
-                <input type="text" id="login-familia" class="login-input" placeholder="Familia (Apellido)"
-                    autocomplete="off">
-                <input type="text" id="login-usuario" class="login-input" placeholder="Usuario (Nombre)"
-                    autocomplete="off">
+                <input type="text" id="login-usuario" class="login-input" placeholder="Usuario"
+                    autocomplete="username">
                 <input type="password" id="login-clave" class="login-input" placeholder="Clave" autocomplete="off">
+                <div id="login-evento-wrapper" style="display:none;">
+                    <label style="color: var(--text-dim); font-size: 0.8rem; margin-bottom: 0.4rem; display: block;">Seleccionar Evento</label>
+                    <select id="login-evento" class="login-input" style="margin-top: 0;"></select>
+                </div>
                 <button id="login-btn" class="login-btn">Ingresar</button>
                 <div id="login-error" class="login-error">Credenciales incorrectas</div>
             </div>
@@ -686,6 +780,7 @@
 
         <header style="position: relative;">
             <h1 id="header-title">Registro de Gasto</h1>
+            <div id="active-trip-badge" style="font-size: 0.75rem; color: var(--accent); font-weight: 600; margin-top: 2px;">📌 Evento Principal</div>
             <span
                 style="position: absolute; right: 10px; bottom: -15px; font-size: 0.6rem; color: var(--text-dim);">v1.0.2+1.5f-v1</span>
             <div id="sync-indicator" class="sync-indicator" onclick="App.syncOfflineData()">
@@ -702,21 +797,59 @@
         </div>
 
         <main>
-            <!-- Registro Section -->
-            <section id="registro" class="section active">
-                <button id="btn-smart-scan" class="btn btn-scan">
-                    <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z">
-                        </path>
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                    </svg>
-                    Escaneo Inteligente
-                </button>
-                <input type="file" id="camera-input" accept="image/*" capture="environment" style="display: none;">
-                <img id="camera-preview" alt="Vista previa">
+            <!-- Inicio Section -->
+            <section id="inicio" class="section active">
+                <div style="padding: 0.25rem 0 0.75rem 0; text-align: center;">
+                    <div id="inicio-avatar" style="width: 56px; height: 56px; background: linear-gradient(135deg, var(--primary), var(--accent)); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; font-weight: 700; color: white; margin: 0 auto 0.6rem auto; box-shadow: 0 4px 20px rgba(99,102,241,0.4);">U</div>
+                    <h2 id="inicio-saludo" style="font-size: 1.2rem; font-weight: 700; margin-bottom: 0.15rem;">¡Hola Usuario!</h2>
+                    <p id="inicio-evento" style="color: var(--text-dim); font-size: 0.85rem; font-weight: 400;">Estás en el evento <strong id="inicio-evento-nombre" style="color: var(--accent);">activo</strong></p>
+                </div>
 
+                <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                    <button id="inicio-btn-registro" onclick="App.showSection('registro')" style="display:flex; align-items:center; gap:1rem; background:rgba(99,102,241,0.12); border:1px solid rgba(99,102,241,0.35); border-radius:1rem; padding:0.6rem 1rem; cursor:pointer; text-align:left; width:100%; transition:all 0.2s;" onmouseover="this.style.background='rgba(99,102,241,0.22)'" onmouseout="this.style.background='rgba(99,102,241,0.12)'">
+                        <span style="font-size:1.6rem; flex-shrink:0;">➕</span>
+                        <div>
+                            <div style="font-weight:600; color:var(--text); font-size:1rem;">Registrar Gasto</div>
+                            <div style="color:var(--text-dim); font-size:0.8rem;">Cargá un nuevo gasto al evento</div>
+                        </div>
+                    </button>
+
+                    <button onclick="App.showSection('dashboard')" style="display:flex; align-items:center; gap:1rem; background:rgba(34,211,238,0.08); border:1px solid rgba(34,211,238,0.3); border-radius:1rem; padding:0.6rem 1rem; cursor:pointer; text-align:left; width:100%; transition:all 0.2s;" onmouseover="this.style.background='rgba(34,211,238,0.18)'" onmouseout="this.style.background='rgba(34,211,238,0.08)'">
+                        <span style="font-size:1.6rem; flex-shrink:0;">📊</span>
+                        <div>
+                            <div style="font-weight:600; color:var(--text); font-size:1rem;">Dashboard</div>
+                            <div style="color:var(--text-dim); font-size:0.8rem;">Totales y gráficos del evento</div>
+                        </div>
+                    </button>
+
+                    <button onclick="App.showSection('historial')" style="display:flex; align-items:center; gap:1rem; background:rgba(16,185,129,0.08); border:1px solid rgba(16,185,129,0.3); border-radius:1rem; padding:0.6rem 1rem; cursor:pointer; text-align:left; width:100%; transition:all 0.2s;" onmouseover="this.style.background='rgba(16,185,129,0.18)'" onmouseout="this.style.background='rgba(16,185,129,0.08)'">
+                        <span style="font-size:1.6rem; flex-shrink:0;">📋</span>
+                        <div>
+                            <div style="font-weight:600; color:var(--text); font-size:1rem;">Historial</div>
+                            <div style="color:var(--text-dim); font-size:0.8rem;">Revisá todos los gastos cargados</div>
+                        </div>
+                    </button>
+
+                    <button id="inicio-btn-conversor" onclick="App.showSection('conversor')" style="display:none; align-items:center; gap:1rem; background:rgba(139,92,246,0.08); border:1px solid rgba(139,92,246,0.3); border-radius:1rem; padding:0.6rem 1rem; cursor:pointer; text-align:left; width:100%; transition:all 0.2s;" onmouseover="this.style.background='rgba(139,92,246,0.18)'" onmouseout="this.style.background='rgba(139,92,246,0.08)'">
+                        <span style="font-size:1.6rem; flex-shrink:0;">💱</span>
+                        <div>
+                            <div style="font-weight:600; color:var(--text); font-size:1rem;">Conversor</div>
+                            <div style="color:var(--text-dim); font-size:0.8rem;">Convertí entre monedas del evento</div>
+                        </div>
+                    </button>
+
+                    <button id="inicio-btn-config" onclick="App.showSection('configuracion')" style="display:none; align-items:center; gap:1rem; background:rgba(245,158,11,0.08); border:1px solid rgba(245,158,11,0.3); border-radius:1rem; padding:0.6rem 1rem; cursor:pointer; text-align:left; width:100%; transition:all 0.2s;" onmouseover="this.style.background='rgba(245,158,11,0.18)'" onmouseout="this.style.background='rgba(245,158,11,0.08)'">
+                        <span style="font-size:1.6rem; flex-shrink:0;">⚙️</span>
+                        <div>
+                            <div style="font-weight:600; color:var(--text); font-size:1rem;">Configuración</div>
+                            <div style="color:var(--text-dim); font-size:0.8rem;">Usuarios, eventos y divisas</div>
+                        </div>
+                    </button>
+                </div>
+            </section>
+
+            <!-- Registro Section -->
+            <section id="registro" class="section">
                 <div class="card">
                     <div class="grid-2">
                         <div class="form-group">
@@ -744,7 +877,7 @@
                             <label>Importe</label>
                             <input type="number" id="exp-importe" step="0.01" placeholder="0.00">
                         </div>
-                        <div class="form-group">
+                        <div class="form-group" data-multicurrency-only>
                             <label>Moneda</label>
                             <select id="exp-moneda"></select>
                         </div>
@@ -765,7 +898,7 @@
                     <span id="dashboard-total-value"
                         style="font-weight: 700; color: var(--accent); font-size: 1.1rem;">0.00</span>
                 </div>
-                <div class="card" style="margin-bottom: 0.75rem;">
+                <div id="family-chart-card" class="card" style="margin-bottom: 0.75rem;">
                     <h3 style="font-size: 1rem;">Desglose por Familia</h3>
                     <p style="color: var(--text-dim); font-size: 0.75rem; margin-bottom: 0.75rem;">Expresado en <span
                             class="base-currency-label"></span></p>
@@ -849,65 +982,211 @@
 
             <!-- Configuración Section -->
             <section id="configuracion" class="section">
-                <h3>Perfil y Ajustes</h3>
-                <div class="grid-2">
-                    <div class="form-group">
-                        <label>Familia</label>
-                        <input type="text" id="cfg-apellido" placeholder="Perez">
+                
+                <!-- Subtabs Navigation -->
+                <div class="subtabs">
+                    <button class="subtab-btn active" onclick="App.switchConfigTab('perfil')">Perfil</button>
+                    <button class="subtab-btn admin-only" onclick="App.switchConfigTab('usuarios')">Usuarios</button>
+                    <button class="subtab-btn admin-only" onclick="App.switchConfigTab('eventos')">Eventos</button>
+                    <button class="subtab-btn admin-only" onclick="App.switchConfigTab('divisas')">Divisas</button>
+                    <button class="subtab-btn admin-only" onclick="App.switchConfigTab('archivos')">Archivos</button>
+                </div>
+
+                <!-- Tab 1: Perfil y Ajustes -->
+                <div id="config-tab-perfil" class="config-tab-content active">
+                    <div class="card" style="margin-bottom: 1.5rem; text-align: center; padding: 2rem;">
+                        <div style="width: 80px; height: 80px; background: var(--accent); color: var(--bg); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2rem; font-weight: bold; margin: 0 auto 1rem auto; box-shadow: 0 4px 10px rgba(0,0,0,0.3);" id="profile-avatar">
+                            U
+                        </div>
+                        <h3 id="profile-display-name" style="margin: 0.5rem 0 0.2rem 0; font-size: 1.4rem;">Nombre de Usuario</h3>
+                        <p id="profile-family-name" style="color: var(--text-dim); margin-bottom: 1.5rem; font-size: 0.95rem;">Familia: Apellido</p>
+                        
+                        <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--glass-border); border-radius: 0.75rem; padding: 1rem; text-align: left; margin-bottom: 1.5rem; display: flex; flex-direction: column; gap: 0.75rem;">
+                            <div style="display: flex; justify-content: space-between;">
+                                <span style="color: var(--text-dim); font-size: 0.9rem;">Usuario:</span>
+                                <strong id="profile-username" style="font-size: 0.9rem; color: var(--text);">username</strong>
+                            </div>
+                            <div style="display: flex; justify-content: space-between;">
+                                <span style="color: var(--text-dim); font-size: 0.9rem;">Rol:</span>
+                                <strong id="profile-role" style="font-size: 0.9rem; color: var(--text); text-transform: capitalize;">usuario</strong>
+                            </div>
+                            <div style="display: flex; justify-content: space-between;">
+                                <span style="color: var(--text-dim); font-size: 0.9rem;">Evento Activo:</span>
+                                <strong id="profile-viaje" style="font-size: 0.9rem; color: var(--text);">Viaje Principal</strong>
+                            </div>
+                        </div>
+
+                        <button onclick="Auth.logout()" class="btn btn-secondary"
+                            style="width: 100%; border: 1px solid var(--error); color: var(--error);">Cerrar Sesión</button>
                     </div>
-                    <div class="form-group">
-                        <label>Nombre</label>
-                        <input type="text" id="cfg-nombre" placeholder="Leo">
+
+                    <!-- Event Switcher (shown only if user has multiple events) -->
+                    <div id="profile-event-switcher" class="card" style="display:none; padding: 1.25rem;">
+                        <h4 style="margin-bottom: 1rem; color: var(--accent); font-size: 0.95rem; letter-spacing: 0.05em; text-transform: uppercase;">Cambiar Evento</h4>
+                        <div id="profile-event-list" style="display: flex; flex-direction: column; gap: 0.5rem;"></div>
                     </div>
                 </div>
-                <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
-                    <button id="btn-save-profile-dedicated" class="btn btn-primary" style="flex:1;">Guardar
-                        Perfil</button>
-                    <button id="btn-open-gemini" class="btn btn-secondary"
-                        style="width: 50px; display: flex; align-items: center; justify-content: center;"
-                        title="Configuración IA">
-                        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M13 10V3L4 14h7v7l9-11h-7z"></path>
-                        </svg>
-                    </button>
+
+                <!-- Tab 2: Usuarios y Permisos -->
+                <div id="config-tab-usuarios" class="config-tab-content">
+                    <div class="card" id="admin-users-card" style="margin-bottom: 0;">
+                        <h3>Usuarios y Permisos</h3>
+                        <div class="form-group" style="margin-bottom: 1rem;">
+                            <label style="color: var(--accent); font-weight: 600; margin-bottom: 0.5rem;">Asignar Viaje o Evento</label>
+                            <div id="user-viaje-checkboxes" class="permission-grid" style="background: rgba(15, 23, 42, 0.5); border: 1px solid var(--glass-border); border-radius: 0.5rem; padding: 0.75rem;"></div>
+                        </div>
+                        <div class="grid-2">
+                            <div class="form-group">
+                                <label>Usuario</label>
+                                <input type="text" id="user-username" autocomplete="off">
+                            </div>
+                            <div class="form-group">
+                                <label>Clave</label>
+                                <input type="password" id="user-password" placeholder="Nueva o dejar vacía">
+                            </div>
+                        </div>
+                        <div class="grid-2">
+                            <div class="form-group">
+                                <label>Nombre</label>
+                                <input type="text" id="user-display-name">
+                            </div>
+                            <div class="form-group">
+                                <label>Familia</label>
+                                <select id="user-family-name" style="display:none;"></select>
+                                <input type="text" id="user-family-name-text" placeholder="Sin familia" style="display:none;">
+                            </div>
+                        </div>
+                        <div class="form-group" style="margin-bottom: 1rem;">
+                            <label>Rol</label>
+                            <select id="user-role" onchange="App.onRoleChange(this.value)">
+                                <option value="user">Usuario</option>
+                                <option value="admin">Admin</option>
+                            </select>
+                        </div>
+                        <div class="permission-grid">
+                            <label><input type="checkbox" id="user-can-view" checked> Ver</label>
+                            <label><input type="checkbox" id="user-can-edit"> Modificar</label>
+                            <label><input type="checkbox" id="user-can-manage"> Admin usuarios</label>
+                            <label><input type="checkbox" id="user-is-active" checked> Activo</label>
+                        </div>
+                        <input type="hidden" id="user-id">
+                        <div style="display:flex; gap:0.5rem;">
+                            <button id="btn-save-user" class="btn btn-primary">Guardar Usuario</button>
+                            <button id="btn-clear-user" class="btn btn-secondary">Nuevo</button>
+                        </div>
+                        <div class="table-container" style="margin-top:1rem;">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Usuario</th>
+                                        <th>Permisos</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="users-table-body"></tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
-                <button onclick="Auth.logout()" class="btn btn-secondary"
-                    style="margin-top: 0.75rem; border: 1px solid var(--error); color: var(--error);">Cerrar
-                    Sesión</button>
 
-                <div class="card">
-                    <div class="card-header" style="justify-content: space-between;">
-                        <h3>Gestión de Divisas</h3>
-                        <button id="btn-sync-now"
-                            style="background:none; border:none; color:var(--accent); cursor:pointer; font-size: 0.8rem; display: flex; align-items: center; gap: 0.3rem;">
-                            <svg style="width:14px; height:14px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15">
-                                </path>
-                            </svg>
-                            Sincronizar
-                        </button>
+                <!-- Tab: Eventos -->
+                <div id="config-tab-eventos" class="config-tab-content">
+                    <div class="card" style="margin-bottom: 0;">
+                        <h3>Gestión de Eventos</h3>
+                        <div class="form-group">
+                            <label>Nombre del Evento (Ej: Brasil 2026)</label>
+                            <input type="text" id="evento-nombre">
+                        </div>
+                        <div class="form-group">
+                            <label>Tipo de Evento</label>
+                            <select id="evento-tipo">
+                                <option value="shared">Gastos Compartidos</option>
+                                <option value="single">Gastos Únicos</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="margin-top: 0.75rem;">
+                            <label>Categorías del Evento (Hasta 10 líneas - una categoría por línea)</label>
+                            <textarea id="evento-categorias" rows="10" placeholder="Alojamiento&#10;Combustible&#10;Comida&#10;Restaurante&#10;Recreación" style="width: 100%; padding: 0.75rem; background: rgba(15, 23, 42, 0.5); border: 1px solid var(--glass-border); border-radius: 0.5rem; color: var(--text); font-size: 0.95rem; resize: vertical; height: auto; text-align: left;"></textarea>
+                        </div>
+                        <div class="form-group" style="margin-top: 0.75rem;">
+                            <label>Familias Participantes (Separadas por comas)</label>
+                            <input type="text" id="evento-familias" placeholder="Perez, Gomez, Lopez" style="width: 100%;">
+                        </div>
+                        <div class="grid-2" style="margin-top: 0.75rem;">
+                            <div class="form-group">
+                                <label style="display: flex; align-items: center; gap: 0.6rem; margin-top: 1.2rem; cursor: pointer; font-weight: 600; font-size: 0.95rem; color: var(--text);">
+                                    <input type="checkbox" id="evento-multi-moneda" checked style="width: 1.4rem; height: 1.4rem; accent-color: var(--primary); cursor: pointer; margin: 0;"> 
+                                    Evento Multi-Moneda
+                                </label>
+                            </div>
+                            <div class="form-group">
+                                <label>Moneda por Defecto (Si es única)</label>
+                                <select id="evento-moneda-defecto">
+                                    <option value="USD">USD</option>
+                                    <option value="BRL">BRL</option>
+                                    <option value="ARS">ARS</option>
+                                </select>
+                            </div>
+                        </div>
+                        <input type="hidden" id="evento-id">
+                        <div style="display:flex; gap:0.5rem; margin-top: 1rem;">
+                            <button id="btn-save-evento" class="btn btn-primary" onclick="App.saveEvento()">Guardar Evento</button>
+                            <button id="btn-clear-evento" class="btn btn-secondary" onclick="App.clearEventoForm()">Nuevo</button>
+                        </div>
+                        <div class="table-container" style="margin-top:1rem;">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Evento</th>
+                                        <th>Tipo</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="eventos-table-body"></tbody>
+                            </table>
+                        </div>
                     </div>
-                    <p class="text-dim" style="font-size: 0.8rem; margin-bottom: 1rem;">Define tus 3 monedas y el tipo
-                        de
-                        cambio respecto a la base.</p>
+                </div>
 
-                    <div id="currency-settings"></div>
+                <!-- Tab 3: Gestión de Divisas -->
+                <div id="config-tab-divisas" class="config-tab-content">
+                    <div class="card" style="margin-bottom: 0;">
+                        <div class="card-header" style="justify-content: space-between;">
+                            <h3>Gestión de Divisas</h3>
+                        </div>
+                        <p class="text-dim" style="font-size: 0.8rem; margin-bottom: 1rem;">Define tus 3 monedas y el tipo de cambio respecto a la base.</p>
 
-                    <div style="display: flex; flex-direction: column; gap: 0.75rem; margin-top: 1.5rem;">
-                        <button id="btn-save-currencies" class="btn btn-primary">Guardar Divisas (Nube)</button>
+                        <div id="currency-settings"></div>
+
+                        <div style="display: flex; gap: 0.5rem; margin-top: 1.5rem; flex-wrap: wrap;">
+                            <button id="btn-save-currencies" class="btn btn-primary" style="flex: 1; min-width: 140px;">Guardar (Nube)</button>
+                            <button id="btn-sync-now" class="btn btn-secondary" style="flex: 1; min-width: 110px; display: flex; align-items: center; justify-content: center; gap: 0.4rem;">
+                                <svg style="width:16px; height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                                </svg>
+                                Sincronizar
+                            </button>
+                            <button id="btn-sync-internet" class="btn btn-secondary" style="flex: 1; min-width: 120px; display: flex; align-items: center; justify-content: center; gap: 0.4rem;">
+                                🌐 Cotizar Online
+                            </button>
+                        </div>
                     </div>
+                </div>
 
-                    <div
-                        style="display: flex; flex-direction: column; gap: 0.75rem; margin-top: 2rem; border-top: 1px solid var(--glass-border); padding-top: 1.5rem;">
-                        <h3 style="color: var(--warning); font-size: 0.9rem;">Gestión de Archivos</h3>
-                        <button id="btn-archive-now" class="btn btn-archive">
-                            📦 Resetear y Archivar Vacaciones
-                        </button>
-                        <button id="btn-view-history" class="btn btn-history">
-                            📜 Ver Archivo Histórico
-                        </button>
+                <!-- Tab 4: Gestión de Archivos -->
+                <div id="config-tab-archivos" class="config-tab-content">
+                    <div class="card" style="margin-bottom: 0;">
+                        <h3 style="color: var(--warning); font-size: 0.9rem; margin-bottom: 0.75rem;">Gestión de Archivos</h3>
+                        <p class="text-dim" style="font-size: 0.8rem; margin-bottom: 1rem;">Administra el historial y limpieza de datos del viaje activo.</p>
+                        
+                        <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                            <button id="btn-archive-now" class="btn btn-archive">
+                                📦 Resetear y Archivar Evento
+                            </button>
+                            <button id="btn-view-history" class="btn btn-history">
+                                📜 Ver Archivo Histórico
+                            </button>
+                        </div>
                     </div>
                 </div>
             </section>
@@ -938,10 +1217,10 @@
                         <label>Importe</label>
                         <input type="number" id="edit-importe" step="0.01">
                     </div>
-                    <div class="form-group">
-                        <label>Moneda</label>
-                        <select id="edit-moneda"></select>
-                    </div>
+                        <div class="form-group" data-multicurrency-only>
+                            <label>Moneda</label>
+                            <select id="edit-moneda"></select>
+                        </div>
                 </div>
                 <div class="form-group">
                     <label>Categoría</label>
@@ -962,31 +1241,6 @@
                 </button>
             </div>
         </div>
-
-        <!-- Modal Configuración Gemini (IA) -->
-        <div id="modal-gemini" class="modal">
-            <div class="modal-content">
-                <button class="btn-close-modal" id="btn-close-gemini">
-                    <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
-                        </path>
-                    </svg>
-                </button>
-                <h3 style="margin-bottom: 1rem;">Configuración IA <small>(Gemini)</small></h3>
-                <p style="color: var(--text-dim); font-size: 0.8rem; margin-bottom: 1.5rem;">Esta clave es necesaria
-                    para el escaneo inteligente de tickets.</p>
-
-                <div class="form-group">
-                    <label>API Key de Gemini</label>
-                    <input type="password" id="cfg-gemini-key-modal" placeholder="Pega aquí tu clave">
-                </div>
-
-                <button id="btn-save-gemini" class="btn btn-primary" style="margin-top: 1.5rem; width: 100%;">Guardar
-                    API Key</button>
-            </div>
-        </div>
-
-
 
         <!-- Modal Archivo Histórico -->
         <div id="modal-history" class="modal">
@@ -1025,7 +1279,13 @@
         </div>
 
         <nav class="nav-bar">
-            <a href="#" class="nav-item active" data-target="registro">
+            <a href="#" class="nav-item active" data-target="inicio">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+                </svg>
+                Inicio
+            </a>
+            <a href="#" class="nav-item" data-target="registro">
                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
                 </svg>
@@ -1039,20 +1299,20 @@
                 </svg>
                 Dashboard
             </a>
-            <a href="#" class="nav-item" data-target="conversor">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z">
-                    </path>
-                </svg>
-                Conversor
-            </a>
             <a href="#" class="nav-item" data-target="historial">
                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                 </svg>
                 Historial
+            </a>
+            <a href="#" class="nav-item" data-target="conversor" data-multicurrency-only>
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z">
+                    </path>
+                </svg>
+                Conversor
             </a>
             <a href="#" class="nav-item" data-target="configuracion">
                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1062,11 +1322,30 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
                 </svg>
-                Ajustes
+                Config
             </a>
         </nav>
 
         <script>
+            // Fetch Interceptor for expired session (401)
+            const originalFetch = window.fetch;
+            window.fetch = async function(...args) {
+                try {
+                    const response = await originalFetch(...args);
+                    if (response.status === 401) {
+                        if (typeof Auth !== 'undefined') {
+                            Auth.showLogin();
+                        }
+                        if (typeof App !== 'undefined') {
+                            App.showToast('Tu sesión expiró. Por favor ingresa de nuevo.', 'warning');
+                        }
+                    }
+                    return response;
+                } catch (err) {
+                    throw err;
+                }
+            };
+
             /**
              * APP STATE & LOGIC
              */
@@ -1074,7 +1353,6 @@
                 config: {
                     apellido: '',
                     nombre: '',
-                    geminiKey: '',
                     gasUrl: 'api.php',
                     currencies: [
                         { code: 'BRL', rate: 1, isBase: true },
@@ -1082,12 +1360,21 @@
                         { code: 'USD', rate: 0.18, isBase: false }
                     ]
                 },
+                settings: {
+                    multiCurrencyEnabled: true,
+                    defaultCurrency: 'BRL',
+                    defaultAppMode: 'shared'
+                },
+                currentUser: null,
+                users: [],
+                eventos: [],
                 data: [],
                 pendingSync: JSON.parse(localStorage.getItem('pendingSync') || '[]'),
                 chart: null,
 
                 async init() {
                     this.loadConfig();
+                    this.populateCategories();
                     document.getElementById('exp-fecha').valueAsDate = new Date();
 
                     // Fetch global currencies AFTER loading local config (to have the gasUrl)
@@ -1112,7 +1399,7 @@
                         setTimeout(() => this.syncOfflineData(), 1500);
                     }
 
-                    this.showSection('registro');
+                    // La navegación inicial la controla showApp() → showSection('inicio')
                 },
 
                 loadConfig() {
@@ -1128,55 +1415,51 @@
                         this.config = {
                             ...this.config,
                             ...parsed,
-                            geminiKey: parsed.geminiKey || this.config.geminiKey,
                             currencies: currenciesValid ? parsed.currencies : this.config.currencies
                         };
                     }
-                    // Update UI fields
-                    document.getElementById('cfg-apellido').value = this.config.apellido;
-                    document.getElementById('cfg-nombre').value = this.config.nombre;
                 },
 
-                saveProfile() {
-                    const newApellido = document.getElementById('cfg-apellido').value.trim().toLowerCase();
-                    const newNombre = document.getElementById('cfg-nombre').value.trim().toLowerCase();
-
-                    this.config.apellido = newApellido;
-                    this.config.nombre = newNombre;
-                    localStorage.setItem('vacaciones_app_config', JSON.stringify(this.config));
-
-                    // Update the Auth session so changes persist on reload
-                    const sessionData = localStorage.getItem('vacaciones_session');
-                    if (sessionData) {
-                        try {
-                            const session = JSON.parse(sessionData);
-                            session.familia = newApellido;
-                            session.usuario = newNombre;
-                            localStorage.setItem('vacaciones_session', JSON.stringify(session));
-                        } catch (e) {
-                            console.error('Error updating session:', e);
+                getUserCategories() {
+                    const defaultCats = ['Alojamiento', 'Combustible', 'Comida', 'Restaurante', 'Recreación'];
+                    if (this.currentUser && this.currentUser.categories) {
+                        const customCats = this.currentUser.categories.split('\n').map(c => c.trim()).filter(Boolean);
+                        if (customCats.length > 0) {
+                            return customCats;
                         }
-                    } else {
-                        localStorage.setItem('vacaciones_session', JSON.stringify({ familia: newApellido, usuario: newNombre }));
                     }
-
-                    this.showToast('Perfil guardado localmente', 'success');
+                    return defaultCats;
                 },
 
-                saveGeminiKey() {
-                    const newKey = document.getElementById('cfg-gemini-key-modal').value.trim();
-                    if (!newKey) {
-                        this.showToast('La clave no puede estar vacía', 'warning');
-                        return;
+                populateCategories() {
+                    const cats = this.getUserCategories();
+                    
+                    // 1. Expense registration select
+                    const selectExp = document.getElementById('exp-categoria');
+                    if (selectExp) {
+                        const selectedVal = selectExp.value;
+                        selectExp.innerHTML = '<option value="" disabled selected>Seleccionar...</option>';
+                        cats.forEach(cat => {
+                            const opt = document.createElement('option');
+                            opt.value = cat;
+                            opt.textContent = cat;
+                            selectExp.appendChild(opt);
+                        });
+                        if (selectedVal && cats.includes(selectedVal)) {
+                            selectExp.value = selectedVal;
+                        }
                     }
 
-                    if (confirm('¿Estás seguro de que deseas cambiar la API Key de Gemini?')) {
-                        if (confirm('CONFIRMACIÓN FINAL: Un error en la clave desactivará el escaneo inteligente. ¿Guardar?')) {
-                            this.config.geminiKey = newKey;
-                            localStorage.setItem('vacaciones_app_config', JSON.stringify(this.config));
-                            this.showToast('API Key de Gemini actualizada', 'success');
-                            this.closeGeminiModal();
-                        }
+                    // 2. Edit modal select
+                    const selectEdit = document.getElementById('edit-categoria');
+                    if (selectEdit) {
+                        selectEdit.innerHTML = '';
+                        cats.forEach(cat => {
+                            const opt = document.createElement('option');
+                            opt.value = cat;
+                            opt.textContent = cat;
+                            selectEdit.appendChild(opt);
+                        });
                     }
                 },
 
@@ -1203,19 +1486,472 @@
                     this.saveGlobalCurrencies();
                 },
 
+                applySession(user, settings) {
+                    this.currentUser = user;
+                    if (settings) this.settings = { ...this.settings, ...settings };
+                    this.config.apellido = user.family_name || '';
+                    this.config.nombre = user.display_name || user.username || '';
+                    localStorage.setItem('vacaciones_app_config', JSON.stringify(this.config));
+                    this.applyPermissions();
+                    this.renderAppSettings();
+                    this.populateCategories();
 
+                    // Update active trip badge
+                    const badge = document.getElementById('active-trip-badge');
+                    if (badge) {
+                        badge.innerText = `📌 ${user.viaje || 'Evento Principal'}`;
+                    }
+
+                    // Populate inicio welcome screen
+                    const inicioAvatar = document.getElementById('inicio-avatar');
+                    const inicioSaludo = document.getElementById('inicio-saludo');
+                    const inicioEvento = document.getElementById('inicio-evento');
+                    const inicioBtnConfig = document.getElementById('inicio-btn-config');
+                    const displayFirst = (user.display_name || user.username || 'Usuario').split(' ')[0];
+                    if (inicioAvatar) inicioAvatar.innerText = displayFirst.charAt(0).toUpperCase();
+                    if (inicioSaludo) inicioSaludo.innerText = `¡Hola ${displayFirst}!`;
+                    const inicioEventoNombre = document.getElementById('inicio-evento-nombre');
+                    if (inicioEventoNombre) inicioEventoNombre.innerText = user.viaje || 'Evento Principal';
+                    const inicioBtnConversor = document.getElementById('inicio-btn-conversor');
+                    if (inicioBtnConversor) inicioBtnConversor.style.display = settings?.multiCurrencyEnabled ? 'flex' : 'none';
+                    if (inicioBtnConfig) inicioBtnConfig.style.display = (user.isAdmin || user.can_manage_users) ? 'flex' : 'none';
+
+                    // Update read-only profile tab UI
+                    const display = user.display_name || user.username || '';
+                    const avatarEl = document.getElementById('profile-avatar');
+                    const displayNameEl = document.getElementById('profile-display-name');
+                    const familyNameEl = document.getElementById('profile-family-name');
+                    const usernameEl = document.getElementById('profile-username');
+                    const roleEl = document.getElementById('profile-role');
+                    const viajeEl = document.getElementById('profile-viaje');
+
+                    if (displayNameEl) displayNameEl.innerText = display;
+                    if (familyNameEl) familyNameEl.innerText = `Familia: ${user.family_name || 'Sin especificar'}`;
+                    if (usernameEl) usernameEl.innerText = user.username;
+                    if (roleEl) roleEl.innerText = user.role === 'admin' ? 'Administrador' : 'Usuario';
+                    if (viajeEl) viajeEl.innerText = user.viaje || 'Viaje Principal';
+                    if (avatarEl) avatarEl.innerText = display.charAt(0).toUpperCase();
+
+                    // Event switcher
+                    const allViajes = user.all_viajes || [];
+                    const switcher = document.getElementById('profile-event-switcher');
+                    const list = document.getElementById('profile-event-list');
+                    if (switcher && list && allViajes.length > 1) {
+                        switcher.style.display = '';
+                        list.innerHTML = '';
+                        allViajes.forEach(ev => {
+                            const isActive = ev === (user.viaje || '');
+                            const btn = document.createElement('button');
+                            btn.className = 'btn';
+                            btn.style.cssText = `text-align:left; justify-content:space-between; display:flex; align-items:center; gap:0.5rem; padding: 0.65rem 1rem; background:${isActive ? 'rgba(99,102,241,0.2)' : 'rgba(255,255,255,0.03)'}; border: 1px solid ${isActive ? 'var(--primary)' : 'var(--glass-border)'}; color:${isActive ? 'var(--text)' : 'var(--text-dim)'}; border-radius:0.6rem; font-weight:${isActive ? '600' : '400'};`;
+                            btn.innerHTML = `<span>📌 ${ev}</span>${isActive ? '<span style="font-size:0.75rem;color:var(--accent);">Activo</span>' : ''}`;
+                            if (!isActive) btn.onclick = () => App.switchEvent(ev);
+                            list.appendChild(btn);
+                        });
+                    } else if (switcher) {
+                        switcher.style.display = 'none';
+                    }
+                },
+
+                applyPermissions() {
+                    const isAdmin = this.currentUser?.isAdmin || this.currentUser?.can_manage_users;
+                    document.querySelectorAll('.admin-only').forEach(el => el.classList.toggle('show', !!isAdmin));
+                    const canEdit = this.currentUser?.isAdmin || this.currentUser?.can_edit_data;
+                    document.getElementById('btn-save').disabled = !canEdit;
+                    
+                    const inicioBtnRegistro = document.getElementById('inicio-btn-registro');
+                    if (inicioBtnRegistro) inicioBtnRegistro.style.display = canEdit ? 'flex' : 'none';
+                    
+                    const navRegistro = document.querySelector('.nav-item[data-target="registro"]');
+                    if (navRegistro) navRegistro.style.display = canEdit ? '' : 'none';
+                },
+
+                renderAppSettings() {
+                    document.querySelectorAll('[data-multicurrency-only]').forEach(el => {
+                        el.style.display = this.settings.multiCurrencyEnabled ? '' : 'none';
+                    });
+                },
+
+                async loadUsers() {
+                    if (!(this.currentUser?.isAdmin || this.currentUser?.can_manage_users)) return;
+                    try {
+                        const res = await fetch(`${this.config.gasUrl}?type=users`, { credentials: 'same-origin' });
+                        this.users = await res.json();
+                        this.renderUsers();
+                    } catch (err) {
+                        this.showToast('No se pudieron cargar usuarios', 'error');
+                    }
+                },
+
+                renderUsers() {
+                    const tbody = document.getElementById('users-table-body');
+                    tbody.innerHTML = '';
+                    this.users.forEach(user => {
+                        const tr = document.createElement('tr');
+                        const perms = [
+                            user.role === 'admin' ? 'admin' : 'usuario',
+                            user.can_edit_data == 1 ? 'edita' : 'solo ve',
+                            `evento: ${user.viaje || 'Viaje Principal'}`,
+                            user.is_active == 1 ? 'activo' : 'inactivo'
+                        ].join(' / ');
+                        tr.innerHTML = `
+                            <td>${user.username}<br><small>${user.display_name || ''}</small></td>
+                            <td><small>${perms}</small></td>
+                            <td style="text-align: right; white-space: nowrap;">
+                                <button class="btn btn-secondary" style="padding:0.4rem;" onclick="App.editUser(${user.id})">Editar</button>
+                                <button class="btn btn-secondary" style="padding:0.4rem; color: var(--error); border-color: var(--error);" onclick="App.deleteUser(${user.id})">X</button>
+                            </td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                },
+
+                async loadEventos() {
+                    if (!(this.currentUser?.isAdmin || this.currentUser?.can_manage_users)) return;
+                    try {
+                        const res = await fetch(`${this.config.gasUrl}?type=eventos`, { credentials: 'same-origin' });
+                        this.eventos = await res.json();
+                        this.renderEventos();
+                        this.populateEventosDropdowns();
+                    } catch (err) {
+                        this.showToast('No se pudieron cargar eventos', 'error');
+                    }
+                },
+
+                renderEventos() {
+                    const tbody = document.getElementById('eventos-table-body');
+                    tbody.innerHTML = '';
+                    this.eventos.forEach(ev => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td>${ev.nombre}</td>
+                            <td><small>${ev.tipo === 'shared' ? 'Compartido' : 'Único'}</small></td>
+                            <td style="text-align:right;">
+                                <button class="btn btn-secondary" style="padding:0.4rem;" onclick="App.editEvento(${ev.id})">Editar</button>
+                                <button class="btn btn-secondary" style="padding:0.4rem; color: var(--error); border-color: var(--error);" onclick="App.deleteEvento(${ev.id})">X</button>
+                            </td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                },
+
+                async switchEvent(nombre) {
+                    this.showLoading();
+                    try {
+                        const res = await fetch(this.config.gasUrl, {
+                            method: 'POST',
+                            credentials: 'same-origin',
+                            body: JSON.stringify({ action: 'switch_event', nombre })
+                        });
+                        const data = await res.json();
+                        if (data.status !== 'success') throw new Error(data.message);
+                        // Reload data and re-apply session with new event context
+                        this.data = [];
+                        this.applySession(data.user, data.settings);
+                        this.populateCategories();
+                        this.updateCurrencySelects();
+                        this.showToast(`Evento cambiado a: ${nombre}`, 'success');
+                        this.showSection('registro');
+                    } catch (err) {
+                        this.showToast('Error al cambiar evento: ' + err.message, 'error');
+                    } finally {
+                        this.hideLoading();
+                    }
+                },
+
+                onRoleChange(role) {
+                    const isAdmin = role === 'admin';
+                    document.getElementById('user-can-view').checked = true;      // siempre
+                    document.getElementById('user-can-edit').checked = isAdmin;   // solo admin
+                    document.getElementById('user-can-manage').checked = false;   // siempre manual
+                    document.getElementById('user-is-active').checked = true;     // siempre
+                },
+
+                populateEventosDropdowns() {
+                    const container = document.getElementById('user-viaje-checkboxes');
+                    if (!container) return;
+                    
+                    const currentChecked = Array.from(container.querySelectorAll('input[type="checkbox"]:checked')).map(cb => cb.value);
+                    
+                    container.innerHTML = '';
+                    this.eventos.forEach(ev => {
+                        const lbl = document.createElement('label');
+                        lbl.style.display = 'flex';
+                        lbl.style.alignItems = 'center';
+                        lbl.style.gap = '0.5rem';
+                        lbl.style.cursor = 'pointer';
+                        
+                        const cb = document.createElement('input');
+                        cb.type = 'checkbox';
+                        cb.value = ev.nombre;
+                        cb.onchange = () => App.onUserEventoChange();
+                        if (currentChecked.includes(ev.nombre)) cb.checked = true;
+                        
+                        lbl.appendChild(cb);
+                        lbl.appendChild(document.createTextNode(ev.nombre));
+                        container.appendChild(lbl);
+                    });
+                },
+
+                onUserEventoChange() {
+                    const checkboxes = document.querySelectorAll('#user-viaje-checkboxes input[type="checkbox"]:checked');
+                    const familySelect = document.getElementById('user-family-name');
+                    const familyText = document.getElementById('user-family-name-text');
+
+                    if (checkboxes.length === 0) {
+                        familySelect.style.display = '';
+                        familySelect.innerHTML = '';
+                        familyText.style.display = 'none';
+                        return;
+                    }
+
+                    const evtName = checkboxes[0].value;
+                    const ev = this.eventos.find(e => e.nombre === evtName);
+                    if (ev) {
+                        const isSingle = ev.tipo === 'single';
+
+                        if (isSingle) {
+                            // Evento único: campo libre, no obligatorio
+                            familySelect.style.display = 'none';
+                            familyText.style.display = '';
+                        } else {
+                            // Evento compartido: selector de familias
+                            familyText.style.display = 'none';
+                            familySelect.style.display = '';
+                            const fams = ev.familias ? ev.familias.split(',').map(f => f.trim()).filter(Boolean) : [];
+                            const currFam = familySelect.value;
+                            familySelect.innerHTML = '<option value="">-- Seleccionar Familia --</option>';
+                            fams.forEach(f => {
+                                const opt = document.createElement('option');
+                                opt.value = f;
+                                opt.textContent = f;
+                                familySelect.appendChild(opt);
+                            });
+                            if (currFam && fams.includes(currFam)) familySelect.value = currFam;
+                        }
+                    } else {
+                        familySelect.style.display = '';
+                        familySelect.innerHTML = '';
+                        familyText.style.display = 'none';
+                    }
+                },
+
+                editEvento(id) {
+                    const ev = this.eventos.find(e => Number(e.id) === Number(id));
+                    if (!ev) return;
+                    document.getElementById('evento-id').value = ev.id;
+                    document.getElementById('evento-nombre').value = ev.nombre;
+                    document.getElementById('evento-tipo').value = ev.tipo || 'shared';
+                    document.getElementById('evento-categorias').value = ev.categorias || '';
+                    document.getElementById('evento-familias').value = ev.familias || '';
+                    document.getElementById('evento-multi-moneda').checked = ev.multi_moneda == 1;
+                    document.getElementById('evento-moneda-defecto').value = ev.moneda_defecto || 'USD';
+                },
+
+                clearEventoForm() {
+                    ['evento-id', 'evento-nombre', 'evento-categorias', 'evento-familias'].forEach(id => document.getElementById(id).value = '');
+                    document.getElementById('evento-tipo').value = 'shared';
+                    document.getElementById('evento-multi-moneda').checked = true;
+                    document.getElementById('evento-moneda-defecto').value = 'USD';
+                },
+
+                async saveEvento() {
+                    const payload = {
+                        action: 'save_event',
+                        id: document.getElementById('evento-id').value,
+                        nombre: document.getElementById('evento-nombre').value.trim(),
+                        tipo: document.getElementById('evento-tipo').value,
+                        categorias: document.getElementById('evento-categorias').value.trim(),
+                        familias: document.getElementById('evento-familias').value.trim(),
+                        multi_moneda: document.getElementById('evento-multi-moneda').checked,
+                        moneda_defecto: document.getElementById('evento-moneda-defecto').value
+                    };
+
+                    if (!payload.nombre) {
+                        this.showToast('El nombre del evento es obligatorio', 'warning');
+                        return;
+                    }
+
+                    this.showLoading();
+                    try {
+                        const res = await fetch(this.config.gasUrl, {
+                            method: 'POST',
+                            credentials: 'same-origin',
+                            body: JSON.stringify(payload)
+                        });
+                        const data = await res.json();
+                        if (data.status !== 'success') throw new Error(data.message);
+                        this.showToast('Evento guardado', 'success');
+                        this.clearEventoForm();
+                        this.loadEventos();
+                    } catch (err) {
+                        this.showToast('Error guardando evento: ' + err.message, 'error');
+                    } finally {
+                        this.hideLoading();
+                    }
+                },
+
+                async deleteEvento(id) {
+                    if (!confirm('¿Seguro que deseas eliminar este evento?')) return;
+                    this.showLoading();
+                    try {
+                        const res = await fetch(this.config.gasUrl, {
+                            method: 'POST',
+                            credentials: 'same-origin',
+                            body: JSON.stringify({ action: 'delete_event', id })
+                        });
+                        const data = await res.json();
+                        if (data.status !== 'success') throw new Error(data.message);
+                        this.showToast('Evento eliminado', 'success');
+                        this.loadEventos();
+                    } catch (err) {
+                        this.showToast('Error al eliminar evento: ' + err.message, 'error');
+                    } finally {
+                        this.hideLoading();
+                    }
+                },
+
+                editUser(id) {
+                    const user = this.users.find(u => Number(u.id) === Number(id));
+                    if (!user) return;
+                    document.getElementById('user-id').value = user.id;
+                    document.getElementById('user-username').value = user.username;
+                    document.getElementById('user-password').value = '';
+                    document.getElementById('user-display-name').value = user.display_name || '';
+                    document.getElementById('user-role').value = user.role || 'user';
+                    document.getElementById('user-can-view').checked = user.can_view_data == 1;
+                    document.getElementById('user-can-edit').checked = user.can_edit_data == 1;
+                    document.getElementById('user-can-manage').checked = user.can_manage_users == 1;
+                    document.getElementById('user-is-active').checked = user.is_active == 1;
+
+                    // 1. Marcar checkboxes de eventos
+                    const assigned = (user.viaje || 'Viaje Principal').split(',').map(s => s.trim());
+                    document.querySelectorAll('#user-viaje-checkboxes input[type="checkbox"]').forEach(cb => {
+                        cb.checked = assigned.includes(cb.value);
+                    });
+
+                    // 2. Disparar onUserEventoChange PRIMERO para que el select de familia
+                    //    se pueble con las opciones correctas del evento
+                    this.onUserEventoChange();
+
+                    // 3. Setear el valor de familia DESPUÉS de que el select ya tiene sus opciones
+                    document.getElementById('user-family-name').value = user.family_name || '';
+                    document.getElementById('user-family-name-text').value = user.family_name || '';
+                    
+                    // Hook: scrollear para que el botón Guardar quede visible sobre la navbar
+                    const saveBtn = document.getElementById('btn-save-user');
+                    if (saveBtn) {
+                        const navbarHeight = 85;
+                        const btnBottom = saveBtn.getBoundingClientRect().bottom + window.scrollY;
+                        const targetScroll = btnBottom - window.innerHeight + navbarHeight - 4;
+                        window.scrollTo({ top: targetScroll, behavior: 'smooth' });
+                    }
+                    const userUsernameInput = document.getElementById('user-username');
+                    if (userUsernameInput) {
+                        setTimeout(() => userUsernameInput.focus(), 400);
+                    }
+                },
+
+                clearUserForm() {
+                    ['user-id', 'user-username', 'user-password', 'user-display-name'].forEach(id => document.getElementById(id).value = '');
+                    document.getElementById('user-family-name').value = '';
+                    document.getElementById('user-family-name-text').value = '';
+                    document.querySelectorAll('#user-viaje-checkboxes input[type="checkbox"]').forEach(cb => cb.checked = false);
+                    document.getElementById('user-role').value = 'user';
+                    document.getElementById('user-can-view').checked = true;
+                    document.getElementById('user-can-edit').checked = false;
+                    document.getElementById('user-can-manage').checked = false;
+                    document.getElementById('user-is-active').checked = true;
+                },
+
+                async saveUser() {
+                    const payload = {
+                        action: 'saveUser',
+                        id: document.getElementById('user-id').value,
+                        username: document.getElementById('user-username').value.trim(),
+                        password: document.getElementById('user-password').value,
+                        displayName: document.getElementById('user-display-name').value.trim(),
+                        familyName: document.getElementById('user-family-name').value.trim(),
+                        role: document.getElementById('user-role').value,
+                        canViewData: document.getElementById('user-can-view').checked,
+                        canEditData: document.getElementById('user-can-edit').checked,
+                        canManageUsers: document.getElementById('user-can-manage').checked,
+                        isActive: document.getElementById('user-is-active').checked,
+                        viaje: Array.from(document.querySelectorAll('#user-viaje-checkboxes input[type="checkbox"]:checked')).map(cb => cb.value).join(', ')
+                    };
+
+                    // Detectar si el primer evento marcado es de tipo 'single' usando los datos, no el DOM
+                    const checkedEventos = Array.from(document.querySelectorAll('#user-viaje-checkboxes input[type="checkbox"]:checked')).map(cb => cb.value);
+                    const firstEvento = this.eventos.find(e => e.nombre === checkedEventos[0]);
+                    const isSingleMode = firstEvento?.tipo === 'single';
+
+                    const familyText = document.getElementById('user-family-name-text');
+                    const familySelect = document.getElementById('user-family-name');
+                    payload.familyName = isSingleMode
+                        ? familyText.value.trim()
+                        : familySelect.value.trim();
+
+                    if (!payload.username || !payload.displayName || (!isSingleMode && !payload.familyName)) {
+                        this.showToast(isSingleMode ? 'Completa usuario y nombre' : 'Completa usuario, nombre y familia', 'warning');
+                        return;
+                    }
+
+                    this.showLoading();
+                    try {
+                        const res = await fetch(this.config.gasUrl, {
+                            method: 'POST',
+                            credentials: 'same-origin',
+                            body: JSON.stringify(payload)
+                        });
+                        const data = await res.json();
+                        if (data.status !== 'success') throw new Error(data.message);
+                        this.showToast('Usuario guardado', 'success');
+                        this.clearUserForm();
+                        this.loadUsers();
+                    } catch (err) {
+                        this.showToast('Error guardando usuario: ' + err.message, 'error');
+                    } finally {
+                        this.hideLoading();
+                    }
+                },
+
+                async deleteUser(id) {
+                    if (!confirm('¿Estás seguro de eliminar este usuario de forma permanente?')) return;
+                    
+                    this.showLoading();
+                    try {
+                        const res = await fetch(this.config.gasUrl, {
+                            method: 'POST',
+                            credentials: 'same-origin',
+                            body: JSON.stringify({ action: 'deleteUser', id })
+                        });
+                        const data = await res.json();
+                        if (data.status !== 'success') throw new Error(data.message);
+                        
+                        this.showToast('Usuario eliminado', 'success');
+                        this.clearUserForm();
+                        this.loadUsers();
+                    } catch (err) {
+                        this.showToast('Error al eliminar usuario: ' + err.message, 'error');
+                    } finally {
+                        this.hideLoading();
+                    }
+                },
 
                 async fetchGlobalCurrencies() {
                     if (!this.config.gasUrl) return;
                     this.showLoading();
                     try {
-                        const res = await fetch(`${this.config.gasUrl}?type=config`);
+                        const res = await fetch(`${this.config.gasUrl}?type=config`, { credentials: 'same-origin' });
                         const data = await res.json();
+                        if (data.status === 'error') throw new Error(data.message);
+                        if (data.settings) this.settings = { ...this.settings, ...data.settings };
 
                         // Validar la estructura de datos que viene del servidor
-                        if (Array.isArray(data) && data.length > 0 && data.every(c => c && c.code)) {
-                            this.config.currencies = data;
-                            console.log('Global currencies loaded:', data);
+                        const currencies = Array.isArray(data) ? data : data.currencies;
+                        if (Array.isArray(currencies) && currencies.length > 0 && currencies.every(c => c && c.code)) {
+                            this.config.currencies = currencies;
+                            this.renderAppSettings();
                         } else {
                             console.warn('Backend returned invalid currency data, using local defaults.');
                         }
@@ -1237,6 +1973,7 @@
                     try {
                         await fetch(this.config.gasUrl, {
                             method: 'POST',
+                            credentials: 'same-origin',
                             body: JSON.stringify(payload)
                         });
                         this.showToast('Divisas sincronizadas con la nube', 'success');
@@ -1258,11 +1995,9 @@
                         });
                     });
 
-                    document.getElementById('btn-save-profile-dedicated').onclick = () => this.saveProfile();
                     document.getElementById('btn-save-currencies').onclick = () => this.saveCurrencies();
-                    document.getElementById('btn-open-gemini').onclick = () => this.openGeminiModal();
-                    document.getElementById('btn-close-gemini').onclick = () => this.closeGeminiModal();
-                    document.getElementById('btn-save-gemini').onclick = () => this.saveGeminiKey();
+                    document.getElementById('btn-save-user').onclick = () => this.saveUser();
+                    document.getElementById('btn-clear-user').onclick = () => this.clearUserForm();
                     document.getElementById('btn-save').onclick = () => this.saveExpense();
                     document.getElementById('btn-reset-form').onclick = () => {
                         if (confirm('¿Vaciar todo el formulario?')) this.resetForm();
@@ -1273,9 +2008,37 @@
                         this.renderCurrencySettings();
                         this.updateCurrencySelects();
                     };
-                    document.getElementById('btn-smart-scan').onclick = () => document.getElementById('camera-input').click();
-                    document.getElementById('camera-input').onchange = (e) => this.handleCameraInput(e);
-
+                    document.getElementById('btn-sync-internet').onclick = async () => {
+                        if (!confirm('¿Sincronizar tipos de cambio desde Internet? Esto actualizará las cotizaciones de tu base de datos utilizando tasas actuales de mercado.')) return;
+                        
+                        const baseCurrency = this.config.currencies.find(c => c.isBase || c.is_base)?.code || 'BRL';
+                        const url = `https://open.er-api.com/v6/latest/${baseCurrency}`;
+                        
+                        this.showLoading();
+                        try {
+                            const res = await fetch(url);
+                            const data = await res.json();
+                            if (data.result === 'success') {
+                                this.config.currencies.forEach(c => {
+                                    if (data.rates && data.rates[c.code]) {
+                                        c.rate = parseFloat(data.rates[c.code]);
+                                    }
+                                });
+                                localStorage.setItem('vacaciones_app_config', JSON.stringify(this.config));
+                                this.updateCurrencySelects();
+                                this.renderCurrencySettings();
+                                await this.saveGlobalCurrencies();
+                                this.showToast('¡Cotizaciones sincronizadas online!', 'success');
+                            } else {
+                                throw new Error('Servicio de cotizaciones no disponible');
+                            }
+                        } catch (err) {
+                            console.error('Internet rate sync error:', err);
+                            this.showToast('Error al obtener cotizaciones de Internet', 'error');
+                        } finally {
+                            this.hideLoading();
+                        }
+                    };
                     // Close modal on background click
                     document.getElementById('modal-history').onclick = (e) => {
                         if (e.target.id === 'modal-history') this.closeHistoryModal();
@@ -1336,15 +2099,6 @@
                     document.getElementById('modal-history').classList.remove('active');
                 },
 
-                openGeminiModal() {
-                    document.getElementById('cfg-gemini-key-modal').value = this.config.geminiKey;
-                    document.getElementById('modal-gemini').classList.add('active');
-                },
-
-                closeGeminiModal() {
-                    document.getElementById('modal-gemini').classList.remove('active');
-                },
-
                 showLoading() {
                     document.getElementById('loading-overlay').style.display = 'flex';
                 },
@@ -1354,7 +2108,7 @@
                 },
 
                 async confirmResetAndArchive() {
-                    if (confirm("¿ESTÁS SEGURO? Se moverán todos los gastos actuales al ARCHIVO HISTÓRICO y empezarás un nuevo viaje con la tabla vacía.")) {
+                    if (confirm("¿ESTÁS SEGURO? Se moverán todos los gastos actuales al ARCHIVO HISTÓRICO y empezarás un nuevo evento con la tabla vacía.")) {
                         if (confirm("CONFIRMACIÓN FINAL: Esta acción no se puede deshacer. ¿Proceder con el backup y reinicio?")) {
                             this.executeResetAndArchive();
                         }
@@ -1366,11 +2120,12 @@
                     try {
                         const res = await fetch(this.config.gasUrl, {
                             method: 'POST',
+                            credentials: 'same-origin',
                             body: JSON.stringify({ action: 'archive_and_reset' })
                         });
                         const data = await res.json();
                         if (data.status === 'success') {
-                            this.showToast('¡Viaje archivado y reiniciado!', 'success');
+                            this.showToast('¡Evento archivado y reiniciado!', 'success');
                             this.data = [];
                             this.loadHistory();
                             this.loadDashboard();
@@ -1389,7 +2144,7 @@
                     tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding: 1rem;">Cargando archivo...</td></tr>';
 
                     try {
-                        const res = await fetch(this.config.gasUrl + '?type=log');
+                        const res = await fetch(this.config.gasUrl + '?type=log', { credentials: 'same-origin' });
                         const data = await res.json();
                         this.historyLogData = data; // Guardar para CSV
                         this.renderHistoryLog(data);
@@ -1446,17 +2201,37 @@
                     document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
                     document.getElementById(id).classList.add('active');
 
-                    const titles = { registro: 'Registro de Gasto', dashboard: 'Dashboard', historial: 'Historial', configuracion: 'Configuración', conversor: 'Conversor de Divisas' };
+                    const titles = { inicio: 'Inicio', registro: 'Registro de Gasto', dashboard: 'Dashboard', historial: 'Historial', configuracion: 'Configuración', conversor: 'Conversor de Divisas' };
                     document.getElementById('header-title').innerText = titles[id];
 
                     if (id === 'dashboard') this.loadDashboard();
                     if (id === 'historial') this.loadHistory();
                     if (id === 'configuracion') {
+                        this.switchConfigTab('perfil');
                         this.fetchGlobalCurrencies().then(() => {
                             this.renderCurrencySettings();
                             this.updateCurrencySelects();
+                            this.loadEventos().then(() => {
+                                this.loadUsers();
+                            });
                         });
                     }
+                },
+
+                switchConfigTab(tabName) {
+                    const isAdmin = this.currentUser?.isAdmin || this.currentUser?.can_manage_users;
+                    if (['usuarios', 'eventos', 'divisas', 'archivos'].includes(tabName) && !isAdmin) {
+                        tabName = 'perfil';
+                    }
+
+                    document.querySelectorAll('.subtab-btn').forEach(btn => btn.classList.remove('active'));
+                    document.querySelectorAll('.config-tab-content').forEach(content => content.classList.remove('active'));
+
+                    const btn = document.querySelector(`.subtab-btn[onclick*="${tabName}"]`);
+                    if (btn) btn.classList.add('active');
+
+                    const activeContent = document.getElementById(`config-tab-${tabName}`);
+                    if (activeContent) activeContent.classList.add('active');
                 },
 
                 updateCurrencySelects() {
@@ -1470,12 +2245,14 @@
                     });
 
                     const base = this.config.currencies.find(c => c.isBase);
-                    const baseCode = base ? base.code : 'Base';
-                    if (base) select.value = base.code;
+                    const baseCode = this.settings.multiCurrencyEnabled ? (base ? base.code : 'Base') : this.settings.defaultCurrency;
+                    select.value = this.settings.multiCurrencyEnabled && base ? base.code : this.settings.defaultCurrency;
 
                     document.querySelectorAll('.base-currency-label').forEach(el => {
                         el.innerText = baseCode;
                     });
+
+                    this.renderAppSettings();
                 },
 
                 renderCurrencySettings() {
@@ -1504,7 +2281,7 @@
                 async saveExpense() {
                     const comercio = document.getElementById('exp-comercio').value;
                     const importe = parseFloat(document.getElementById('exp-importe').value);
-                    const monedaCode = document.getElementById('exp-moneda').value;
+                    const monedaCode = this.settings.multiCurrencyEnabled ? document.getElementById('exp-moneda').value : this.settings.defaultCurrency;
                     const categoria = document.getElementById('exp-categoria').value;
 
                     if (!comercio || isNaN(importe) || !categoria) {
@@ -1518,10 +2295,7 @@
                     btnSave.innerHTML = '<div class="spinner" style="width:16px; height:16px; border-width:2px; margin-right:8px;"></div> Procesando...';
 
                     const moneda = this.config.currencies.find(c => c.code === monedaCode);
-                    // If moneda is not found, it means currency data is not loaded or invalid.
-                    // In this case, we can't calculate importeBase, so we should prevent saving or handle it.
-                    // For now, let's assume moneda will always be found after init.
-                    const importeBase = importe / moneda.rate;
+                    const importeBase = this.settings.multiCurrencyEnabled && moneda ? importe / moneda.rate : importe;
 
                     const payload = {
                         action: 'create',
@@ -1551,6 +2325,7 @@
                     try {
                         const response = await fetch(this.config.gasUrl, {
                             method: 'POST',
+                            credentials: 'same-origin',
                             body: JSON.stringify(payload)
                         });
 
@@ -1583,7 +2358,7 @@
 
                     this.showLoading();
                     try {
-                        const res = await fetch(this.config.gasUrl);
+                        const res = await fetch(this.config.gasUrl, { credentials: 'same-origin' });
                         if (!res.ok) {
                             throw new Error(`Error de servidor (${res.status}): ${res.statusText}`);
                         }
@@ -1627,6 +2402,7 @@
                         try {
                             await fetch(this.config.gasUrl, {
                                 method: 'POST',
+                                credentials: 'same-origin',
                                 body: JSON.stringify(item)
                             });
                             successCount++;
@@ -1667,7 +2443,6 @@
                     document.getElementById('exp-categoria').value = '';
                     document.getElementById('exp-comercio').value = '';
                     document.getElementById('exp-importe').value = '';
-                    document.getElementById('camera-preview').style.display = 'none';
                 },
 
                 async loadHistory() {
@@ -1765,10 +2540,7 @@
 
                         await fetch(this.config.gasUrl, {
                             method: 'POST',
-                            mode: 'no-cors',
-                            headers: {
-                                'Content-Type': 'application/json',
-                            },
+                            credentials: 'same-origin',
                             body: JSON.stringify({
                                 action: 'delete',
                                 id: id
@@ -1861,6 +2633,7 @@
                     try {
                         const response = await fetch(this.config.gasUrl, {
                             method: 'POST',
+                            credentials: 'same-origin',
                             body: JSON.stringify(payload)
                         });
                         const resData = await response.json();
@@ -1916,6 +2689,7 @@
                     try {
                         const response = await fetch(this.config.gasUrl, {
                             method: 'POST',
+                            credentials: 'same-origin',
                             body: JSON.stringify(payload)
                         });
                         const resData = await response.json();
@@ -1930,15 +2704,21 @@
                 },
 
                 async loadDashboard() {
+                    // Aplicar visibilidad según tipo de evento SIEMPRE (antes del early return)
+                    const sharedMode = (this.settings.defaultAppMode || 'shared') === 'shared';
+                    document.getElementById('balance-card').style.display = sharedMode ? '' : 'none';
+                    document.getElementById('family-chart-card').style.display = sharedMode ? '' : 'none';
+
                     // If no data yet, try fetching
                     if (!this.data.length) {
-                        const canvas = document.getElementById('chart-canvas');
-                        const ctx = canvas.getContext('2d');
-                        ctx.font = '12px Inter';
-                        ctx.fillStyle = '#94a3b8';
-                        ctx.textAlign = 'center';
-                        ctx.fillText('Cargando datos...', canvas.width / 2, canvas.height / 2);
-
+                        if (sharedMode) {
+                            const canvas = document.getElementById('chart-canvas');
+                            const ctx = canvas.getContext('2d');
+                            ctx.font = '12px Inter';
+                            ctx.fillStyle = '#94a3b8';
+                            ctx.textAlign = 'center';
+                            ctx.fillText('Cargando datos...', canvas.width / 2, canvas.height / 2);
+                        }
                         await this.fetchData();
                     }
 
@@ -1960,18 +2740,25 @@
                     });
 
                     // Update UI Labels
-                    const baseCode = this.config.currencies.find(c => c.isBase)?.code || '';
+                    const baseCode = this.settings.multiCurrencyEnabled ? (this.config.currencies.find(c => c.isBase)?.code || '') : this.settings.defaultCurrency;
                     document.getElementById('dashboard-total-value').innerText = `${totalGeneral.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${baseCode}`;
                     document.querySelectorAll('.base-currency-label').forEach(el => el.innerText = baseCode);
 
                     // --- Chart 1: Familias ---
-                    this.renderChart('chart-canvas', 'chart', Object.keys(familyTotals), Object.values(familyTotals), 'Total por Familia', 'rgba(99, 102, 241, 0.5)', '#6366f1');
+                    if (sharedMode) {
+                        this.renderChart('chart-canvas', 'chart', Object.keys(familyTotals), Object.values(familyTotals), 'Total por Familia', 'rgba(99, 102, 241, 0.5)', '#6366f1');
+                    } else if (this.chart) {
+                        this.chart.destroy();
+                        this.chart = null;
+                    }
 
                     // --- Chart 2: Categorías ---
                     this.renderChart('category-chart-canvas', 'categoryChart', Object.keys(categoryTotals), Object.values(categoryTotals), 'Total por Categoría', 'rgba(34, 211, 238, 0.5)', '#22d3ee');
 
                     // --- Balance de Cuentas ---
-                    this.calculateBalance(familyTotals, totalGeneral, baseCode);
+                    if (sharedMode) {
+                        this.calculateBalance(familyTotals, totalGeneral, baseCode);
+                    }
                 },
 
                 calculateBalance(familyTotals, totalGeneral, baseCode) {
@@ -2074,233 +2861,130 @@
                     const m = String(d.getMonth() + 1).padStart(2, '0');
                     const day = String(d.getDate()).padStart(2, '0');
                     return `${y}-${m}-${day}`;
-                },
-
-                // --- SMART SCAN LOGIC ---
-
-                async handleCameraInput(event) {
-                    const file = event.target.files[0];
-                    if (!file) return;
-
-                    const preview = document.getElementById('camera-preview');
-                    preview.src = URL.createObjectURL(file);
-                    preview.style.display = 'block';
-
-                    this.showToast('Analizando ticket...', 'info');
-
-                    try {
-                        const base64 = await this.processImage(file);
-                        const result = await this.callGemini(base64);
-                        this.processGeminiResult(result);
-                    } catch (err) {
-                        console.error('Smart Scan Error:', err);
-                        this.showToast('Error: ' + (err.message || 'Fallo en proceso'), 'error');
-                    }
-                },
-
-                processImage(file) {
-                    return new Promise((resolve, reject) => {
-                        const url = URL.createObjectURL(file);
-                        const img = new Image();
-                        img.onload = () => {
-                            try {
-                                const canvas = document.createElement('canvas');
-                                let width = img.width;
-                                let height = img.height;
-                                const maxDim = 1024;
-
-                                if (width > height && width > maxDim) {
-                                    height = Math.round((height * maxDim) / width);
-                                    width = maxDim;
-                                } else if (height > maxDim) {
-                                    width = Math.round((width * maxDim) / height);
-                                    height = maxDim;
-                                }
-
-                                canvas.width = width;
-                                canvas.height = height;
-                                const ctx = canvas.getContext('2d');
-                                if (!ctx) throw new Error("Canvas context failed");
-
-                                ctx.drawImage(img, 0, 0, width, height);
-                                const base64 = canvas.toDataURL('image/jpeg', 0.7).split(',')[1];
-
-                                URL.revokeObjectURL(url);
-                                resolve(base64);
-                            } catch (e) {
-                                URL.revokeObjectURL(url);
-                                reject(e);
-                            }
-                        };
-                        img.onerror = () => {
-                            URL.revokeObjectURL(url);
-                            reject(new Error("Error cargando imagen"));
-                        };
-                        img.src = url;
-                    });
-                },
-
-
-
-                async callGemini(base64) {
-                    const apiKey = this.config.geminiKey;
-                    if (!apiKey) {
-                        this.showToast('Configura tu API Key de Gemini en Ajustes Técnicos', 'warning');
-                        throw new Error('No API Key configurada');
-                    }
-
-                    // Usar v1beta con gemini-2.0-flash-lite (mejor disponibilidad y cuota)
-                    const MODEL = 'gemini-2.0-flash-lite';
-                    const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${apiKey}`;
-
-                    const prompt = `Analiza este ticket de compra. Extrae el NOMBRE DEL COMERCIO y el IMPORTE TOTAL de la factura.
-Responde ÚNICAMENTE en formato JSON plano sin markdown: {"comercio": "nombre del comercio", "total": 123.45}
-Si no puedes detectar alguno de los campos, usa null en ese valor.
-El total debe ser un número sin símbolos de moneda.`;
-
-                    const payload = {
-                        contents: [{
-                            parts: [
-                                { text: prompt },
-                                { inline_data: { mime_type: "image/jpeg", data: base64 } }
-                            ]
-                        }],
-                        generationConfig: {
-                            temperature: 0.1,
-                            maxOutputTokens: 256
-                        }
-                    };
-
-                    console.log(`🚀 Llamando a Gemini con modelo: ${MODEL}`);
-                    let res;
-                    try {
-                        res = await fetch(url, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(payload)
-                        });
-                    } catch (networkErr) {
-                        throw new Error('Error de red al contactar Gemini. Verifica tu conexión.');
-                    }
-
-                    const json = await res.json();
-                    console.log('📦 Respuesta de Gemini:', json);
-
-                    if (!res.ok) {
-                        console.error('Gemini API Error:', json);
-                        const status = res.status;
-                        const errorMsg = json.error?.message || `Error API (${status})`;
-                        if (status === 429) {
-                            throw new Error('Cuota de API agotada. Espera unos minutos e intenta de nuevo.');
-                        } else if (status === 400) {
-                            throw new Error('API Key inválida o solicitud incorrecta. Verifica tu clave en Ajustes.');
-                        } else if (status === 403) {
-                            throw new Error('API Key sin permisos. Activa la API de Gemini en Google Cloud.');
-                        }
-                        throw new Error(errorMsg);
-                    }
-
-                    if (!json.candidates || json.candidates.length === 0) {
-                        const blockReason = json.promptFeedback?.blockReason;
-                        if (blockReason) {
-                            throw new Error(`Imagen bloqueada por Gemini: ${blockReason}`);
-                        }
-                        throw new Error('No se detectó información clara en el ticket. Intenta con mejor iluminación.');
-                    }
-
-                    const text = json.candidates[0].content.parts[0].text;
-                    // Limpiar markdown si Gemini lo devuelve
-                    const cleanText = text.replace(/```json/gi, '').replace(/```/g, '').trim();
-                    try {
-                        return JSON.parse(cleanText);
-                    } catch (parseErr) {
-                        console.error('Error parseando JSON de Gemini:', cleanText);
-                        throw new Error('Respuesta de Gemini no es JSON válido. Intenta de nuevo.');
-                    }
-                },
-
-                processGeminiResult(res) {
-                    const { comercio, total } = res;
-
-                    if (comercio && total) {
-                        // Caso A: Éxito Total
-                        document.getElementById('exp-comercio').value = comercio;
-                        document.getElementById('exp-importe').value = total;
-                        this.showToast('¡Ticket detectado con éxito!', 'success');
-                    } else if (comercio && !total) {
-                        // Caso B: Solo Comercio
-                        document.getElementById('exp-comercio').value = comercio;
-                        this.showToast('Comercio detectado. Ahora enfoca el Total', 'info');
-                    } else if (!comercio && total) {
-                        // Caso C: Solo Total
-                        document.getElementById('exp-importe').value = total;
-                        this.showToast('Importe detectado. Ahora enfoca el nombre del comercio', 'info');
-                    } else {
-                        this.showToast('No se detectó información clara. Intenta de nuevo.', 'warning');
-                    }
                 }
             };
 
             // Authentication System
             const Auth = {
-                PASSWORD: 'vacacionesenbrasil',
-
-                init() {
+                async init() {
                     const loginBtn = document.getElementById('login-btn');
+                    const loginUsuario = document.getElementById('login-usuario');
                     const loginClave = document.getElementById('login-clave');
+                    const loginEvento = document.getElementById('login-evento');
 
-                    // Check if already logged in
-                    const session = this.getSession();
-                    if (session) {
-                        this.showApp(session);
-                    } else {
-                        this.showLogin();
-                    }
+                    const checkUserEvents = async () => {
+                        const username = loginUsuario.value.trim();
+                        if (!username) return;
+                        try {
+                            const res = await fetch('api.php', {
+                                method: 'POST',
+                                credentials: 'same-origin',
+                                body: JSON.stringify({ action: 'check_user', username })
+                            });
+                            const data = await res.json();
+                            const wrapper = document.getElementById('login-evento-wrapper');
+                            if (data.status === 'success' && data.eventos && data.eventos.length > 1) {
+                                loginEvento.innerHTML = data.eventos.map(e => `<option value="${e}">${e}</option>`).join('');
+                                wrapper.style.display = 'block';
+                            } else {
+                                wrapper.style.display = 'none';
+                                loginEvento.innerHTML = data.eventos && data.eventos.length === 1
+                                    ? `<option value="${data.eventos[0]}">${data.eventos[0]}</option>`
+                                    : '';
+                            }
+                        } catch (e) { console.warn('check_user error', e); }
+                    };
 
-                    // Login button click
+                    // Disparar al salir del campo (Tab o clic afuera)
+                    loginUsuario.addEventListener('blur', checkUserEvents);
+
+                    // Disparar también al escribir (debounce 600ms)
+                    let debounceTimer;
+                    loginUsuario.addEventListener('input', () => {
+                        clearTimeout(debounceTimer);
+                        debounceTimer = setTimeout(checkUserEvents, 600);
+                    });
+
                     loginBtn.addEventListener('click', () => this.handleLogin());
-
-                    // Enter key on password field
                     loginClave.addEventListener('keypress', (e) => {
                         if (e.key === 'Enter') this.handleLogin();
                     });
+
+                    try {
+                        const res = await fetch('api.php?type=session', { credentials: 'same-origin' });
+                        const data = await res.json();
+                        if (data.status === 'success' && data.user) {
+                            this.showApp(data.user, data.settings);
+                            return;
+                        }
+                    } catch (err) {
+                        console.warn('No se pudo recuperar sesi?n', err);
+                    }
+
+                    this.showLogin();
                 },
 
-                handleLogin() {
-                    const familia = document.getElementById('login-familia').value.trim();
+                async handleLogin() {
                     const usuario = document.getElementById('login-usuario').value.trim();
                     const clave = document.getElementById('login-clave').value;
                     const errorDiv = document.getElementById('login-error');
 
                     errorDiv.classList.remove('show');
 
-                    if (!familia || !usuario || !clave) {
-                        errorDiv.textContent = 'Por favor completa todos los campos';
+                    if (!usuario || !clave) {
+                        errorDiv.textContent = 'Completa usuario y clave';
                         errorDiv.classList.add('show');
                         return;
                     }
 
-                    if (clave !== this.PASSWORD) {
-                        errorDiv.textContent = 'Clave incorrecta';
-                        errorDiv.classList.add('show');
-                        return;
+                    // Si el selector de eventos no se cargó aún (blur no se disparó), hacerlo ahora
+                    const wrapper = document.getElementById('login-evento-wrapper');
+                    if (wrapper.style.display === 'none' || wrapper.style.display === '') {
+                        try {
+                            const chk = await fetch('api.php', {
+                                method: 'POST',
+                                credentials: 'same-origin',
+                                body: JSON.stringify({ action: 'check_user', username: usuario })
+                            });
+                            const chkData = await chk.json();
+                            const loginEvento = document.getElementById('login-evento');
+                            if (chkData.status === 'success' && chkData.eventos && chkData.eventos.length > 1) {
+                                loginEvento.innerHTML = chkData.eventos.map(e => `<option value="${e}">${e}</option>`).join('');
+                                wrapper.style.display = 'block';
+                                // Mostrar al usuario para que elija y detener el login
+                                errorDiv.textContent = 'Seleccioná el evento y volvé a ingresar';
+                                errorDiv.classList.add('show');
+                                return;
+                            } else if (chkData.eventos && chkData.eventos.length === 1) {
+                                loginEvento.innerHTML = `<option value="${chkData.eventos[0]}">${chkData.eventos[0]}</option>`;
+                            }
+                        } catch (e) { /* continuar igual */ }
                     }
 
-                    // Save session
-                    const session = { familia, usuario };
-                    localStorage.setItem('vacaciones_session', JSON.stringify(session));
-
-                    this.showApp(session);
+                    try {
+                        const res = await fetch('api.php', {
+                            method: 'POST',
+                            credentials: 'same-origin',
+                            body: JSON.stringify({ action: 'login', username: usuario, password: clave, evento: document.getElementById('login-evento').value })
+                        });
+                        const data = await res.json();
+                        if (data.status !== 'success') throw new Error(data.message || 'Credenciales incorrectas');
+                        this.showApp(data.user, data.settings);
+                    } catch (err) {
+                        errorDiv.textContent = err.message || 'No se pudo iniciar sesi?n';
+                        errorDiv.classList.add('show');
+                    }
                 },
 
-                getSession() {
-                    const sessionData = localStorage.getItem('vacaciones_session');
-                    return sessionData ? JSON.parse(sessionData) : null;
-                },
-
-                logout() {
-                    if (confirm('¿Seguro que deseas cerrar sesión?')) {
-                        localStorage.removeItem('vacaciones_session');
+                async logout() {
+                    if (!confirm('?Seguro que deseas cerrar sesi?n?')) return;
+                    try {
+                        await fetch('api.php', {
+                            method: 'POST',
+                            credentials: 'same-origin',
+                            body: JSON.stringify({ action: 'logout' })
+                        });
+                    } finally {
                         location.reload();
                     }
                 },
@@ -2310,26 +2994,26 @@ El total debe ser un número sin símbolos de moneda.`;
                     document.getElementById('app-container').classList.remove('show');
                 },
 
-                showApp(session) {
+                showApp(user, settings) {
                     document.getElementById('login-screen').classList.add('hidden');
                     document.getElementById('app-container').classList.add('show');
-
-                    // Asegurar que la configuración de la App coincida con la sesión
-                    const savedConfig = localStorage.getItem('vacaciones_app_config');
-                    let config = savedConfig ? JSON.parse(savedConfig) : {};
-
-                    config.apellido = session.familia.toLowerCase();
-                    config.nombre = session.usuario.toLowerCase();
-
-                    localStorage.setItem('vacaciones_app_config', JSON.stringify(config));
-
-                    // Initialize the app
+                    App.applySession(user, settings);
                     App.init();
+                    App.showSection('inicio');
                 }
             };
 
             // Start authentication
             Auth.init();
+
+            // Register PWA Service Worker
+            if ('serviceWorker' in navigator) {
+                window.addEventListener('load', () => {
+                    navigator.serviceWorker.register('sw.js')
+                        .then(reg => console.log('Service Worker registered successfully!', reg.scope))
+                        .catch(err => console.log('Service Worker registration failed:', err));
+                });
+            }
         </script>
 
     </div>
