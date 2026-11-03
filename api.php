@@ -25,10 +25,49 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
-define('DB_HOST', getenv('VACACIONES_DB_HOST') ?: 'localhost');
-define('DB_NAME', getenv('VACACIONES_DB_NAME') ?: 'marketca_multigasto');
-define('DB_USER', getenv('VACACIONES_DB_USER') ?: 'marketca_multigasto');
-define('DB_PASS', getenv('VACACIONES_DB_PASS') ?: 'aTBlg1vcpf!');
+// Credenciales de la base: se definen en config.local.php (no versionado, vive solo en el server)
+if (is_file(__DIR__ . '/config.local.php')) {
+    require __DIR__ . '/config.local.php';
+}
+defined('DB_HOST') || define('DB_HOST', getenv('VACACIONES_DB_HOST') ?: 'localhost');
+defined('DB_NAME') || define('DB_NAME', getenv('VACACIONES_DB_NAME') ?: '');
+defined('DB_USER') || define('DB_USER', getenv('VACACIONES_DB_USER') ?: '');
+defined('DB_PASS') || define('DB_PASS', getenv('VACACIONES_DB_PASS') ?: '');
+// Prefijo de las tablas (ej: 'mg_') cuando la base se comparte con otra app
+defined('DB_PREFIX') || define('DB_PREFIX', getenv('VACACIONES_DB_PREFIX') ?: '');
+
+/**
+ * PDO que antepone DB_PREFIX a las tablas de la app en cada consulta.
+ */
+class PrefixedPDO extends PDO {
+    private function px(string $sql): string {
+        if (DB_PREFIX === '') {
+            return $sql;
+        }
+        return preg_replace(
+            '/\b(FROM|INTO|UPDATE|TABLE|JOIN)(\s+)`?(usuarios|gastos_log|gastos|config_monedas|app_settings|eventos|pagos)\b`?/i',
+            '$1$2`' . DB_PREFIX . '$3`',
+            $sql
+        );
+    }
+
+    #[\ReturnTypeWillChange]
+    public function prepare(string $query, array $options = []) {
+        return parent::prepare($this->px($query), $options);
+    }
+
+    #[\ReturnTypeWillChange]
+    public function query(string $query, ?int $fetchMode = null, mixed ...$fetchModeArgs) {
+        return $fetchMode === null
+            ? parent::query($this->px($query))
+            : parent::query($this->px($query), $fetchMode, ...$fetchModeArgs);
+    }
+
+    #[\ReturnTypeWillChange]
+    public function exec(string $statement) {
+        return parent::exec($this->px($statement));
+    }
+}
 
 function json_out($data, int $status = 200): void {
     http_response_code($status);
@@ -37,7 +76,7 @@ function json_out($data, int $status = 200): void {
 }
 
 try {
-    $pdo = new PDO(
+    $pdo = new PrefixedPDO(
         "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=utf8mb4",
         DB_USER,
         DB_PASS,
@@ -104,7 +143,35 @@ try {
             $pdo->exec("ALTER TABLE eventos ADD COLUMN multi_moneda TINYINT(1) DEFAULT 1, ADD COLUMN moneda_defecto VARCHAR(3) DEFAULT 'USD'");
         } catch (PDOException $e) {}
     }
+
+    // Auto-migration: pagos entre familias (liquidaciones de gastos compartidos)
+    try {
+        $pdo->query("SELECT 1 FROM pagos LIMIT 1");
+    } catch (PDOException $ex) {
+      try {
+        $pdo->exec("
+            CREATE TABLE `pagos` (
+              `id` int(11) NOT NULL AUTO_INCREMENT,
+              `uuid` varchar(32) NOT NULL,
+              `fecha` date NOT NULL,
+              `de_familia` varchar(100) NOT NULL,
+              `a_familia` varchar(100) NOT NULL,
+              `importe_base` decimal(14,2) NOT NULL,
+              `nota` varchar(255) DEFAULT NULL,
+              `usuario` varchar(100) DEFAULT NULL,
+              `viaje` varchar(100) NOT NULL,
+              `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              PRIMARY KEY (`id`),
+              UNIQUE KEY `uuid` (`uuid`),
+              KEY `viaje` (`viaje`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+        ");
+      } catch (PDOException $e_pagos) {
+        // Sin permiso CREATE u otro fallo: la app sigue funcionando sin pagos
+      }
+    }
 } catch (PDOException $e) {
+    error_log('Vacaciones API DB error: ' . $e->getMessage());
     json_out(['status' => 'error', 'message' => 'DB Connection failed'], 500);
 }
 
@@ -317,6 +384,13 @@ if ($method === 'GET') {
         json_out($stmt->fetchAll());
     }
 
+    if ($type === 'pagos') {
+        require_view($user);
+        $stmt = $pdo->prepare("SELECT uuid as ID, fecha as Fecha, de_familia as De, a_familia as A, importe_base as ImporteBase, nota as Nota, usuario as Usuario FROM pagos WHERE viaje = ? ORDER BY fecha DESC, created_at DESC");
+        $stmt->execute([$user['viaje']]);
+        json_out($stmt->fetchAll());
+    }
+
     require_view($user);
     $sql = "SELECT uuid as ID, fecha as Fecha, comercio as Comercio, importe as Importe, categoria as Categoria, moneda as Moneda, usuario as Usuario, apellido as Apellido, importe_base as ImporteBase FROM gastos WHERE viaje = ?";
     $params = [$user['viaje']];
@@ -386,6 +460,39 @@ try {
         $stmt = $pdo->prepare("DELETE FROM gastos WHERE uuid = ?");
         $stmt->execute([$payload['id']]);
         json_out(['status' => 'success', 'message' => 'Eliminado']);
+    }
+
+    if ($action === 'create_payment') {
+        require_edit($user);
+        $de = strtolower(trim((string)($payload['de'] ?? '')));
+        $a = strtolower(trim((string)($payload['a'] ?? '')));
+        $importe = round((float)($payload['importe'] ?? 0), 2);
+        if ($de === '' || $a === '' || $de === $a) {
+            json_out(['status' => 'error', 'message' => 'Indica dos familias distintas'], 400);
+        }
+        if ($importe <= 0) {
+            json_out(['status' => 'error', 'message' => 'El importe debe ser mayor que cero'], 400);
+        }
+        $uuid = bin2hex(random_bytes(16));
+        $stmt = $pdo->prepare("INSERT INTO pagos (uuid, fecha, de_familia, a_familia, importe_base, nota, usuario, viaje) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->execute([
+            $uuid,
+            $payload['fecha'] ?? date('Y-m-d'),
+            $de,
+            $a,
+            $importe,
+            mb_substr(trim((string)($payload['nota'] ?? '')), 0, 255),
+            $user['username'],
+            $user['viaje']
+        ]);
+        json_out(['status' => 'success', 'data' => ['id' => $uuid]]);
+    }
+
+    if ($action === 'delete_payment') {
+        require_edit($user);
+        $stmt = $pdo->prepare("DELETE FROM pagos WHERE uuid = ? AND viaje = ?");
+        $stmt->execute([$payload['id'], $user['viaje']]);
+        json_out(['status' => 'success', 'message' => 'Pago eliminado']);
     }
 
     if ($action === 'updateCurrencies') {
@@ -536,7 +643,11 @@ try {
 
         $stmtDelete = $pdo->prepare("DELETE FROM gastos WHERE viaje = ?");
         $stmtDelete->execute([$user['viaje']]);
-        
+
+        // Los pagos entre familias pertenecen al ciclo de gastos archivado
+        $stmtDelPagos = $pdo->prepare("DELETE FROM pagos WHERE viaje = ?");
+        $stmtDelPagos->execute([$user['viaje']]);
+
         $pdo->commit();
         json_out(['status' => 'success', 'message' => 'Gastos del evento actual archivados y reiniciados', 'file' => $backupFile]);
     }

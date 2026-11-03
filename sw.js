@@ -1,8 +1,9 @@
-const CACHE_NAME = 'vacaciones-app-v1';
+const CACHE_NAME = 'vacaciones-app-v3';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
   './manifest.json',
+  './logo.svg',
   'https://cdn.jsdelivr.net/npm/chart.js',
   'https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0'
 ];

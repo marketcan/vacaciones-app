@@ -759,16 +759,12 @@
     <!-- Login Screen -->
     <div id="login-screen">
         <div class="login-container">
-            <img src="https://brasil.marketapp.com.ar/logo_marketapp.png" class="login-logo" alt="MarketApp Logo">
+            <img src="logo.svg" class="login-logo" alt="MarketApp Logo">
             <h1 class="login-title">Multigasto</h1>
             <div class="login-card">
                 <input type="text" id="login-usuario" class="login-input" placeholder="Usuario"
                     autocomplete="username">
                 <input type="password" id="login-clave" class="login-input" placeholder="Clave" autocomplete="off">
-                <div id="login-evento-wrapper" style="display:none;">
-                    <label style="color: var(--text-dim); font-size: 0.8rem; margin-bottom: 0.4rem; display: block;">Seleccionar Evento</label>
-                    <select id="login-evento" class="login-input" style="margin-top: 0;"></select>
-                </div>
                 <button id="login-btn" class="login-btn">Ingresar</button>
                 <div id="login-error" class="login-error">Credenciales incorrectas</div>
             </div>
@@ -802,7 +798,14 @@
                 <div style="padding: 0.25rem 0 0.75rem 0; text-align: center;">
                     <div id="inicio-avatar" style="width: 56px; height: 56px; background: linear-gradient(135deg, var(--primary), var(--accent)); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; font-weight: 700; color: white; margin: 0 auto 0.6rem auto; box-shadow: 0 4px 20px rgba(99,102,241,0.4);">U</div>
                     <h2 id="inicio-saludo" style="font-size: 1.2rem; font-weight: 700; margin-bottom: 0.15rem;">¡Hola Usuario!</h2>
-                    <p id="inicio-evento" style="color: var(--text-dim); font-size: 0.85rem; font-weight: 400;">Estás en el evento <strong id="inicio-evento-nombre" style="color: var(--accent);">activo</strong></p>
+                    <div id="inicio-evento-wrapper" style="margin-top: 0.5rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem; flex-wrap: wrap;">
+                        <span style="color: var(--text-dim); font-size: 0.85rem; font-weight: 400;">Evento:</span>
+                        <select id="inicio-evento-select" style="background: rgba(15, 23, 42, 0.7); border: 1px solid var(--primary); color: var(--accent); font-weight: 600; font-size: 0.9rem; padding: 0.45rem 0.9rem; border-radius: 0.75rem; cursor: pointer; max-width: 260px; text-align: center;" onchange="App.switchEvent(this.value)">
+                        </select>
+                        <p id="inicio-evento-single" style="display: none; color: var(--text-dim); font-size: 0.85rem; font-weight: 400; margin: 0;">
+                            Estás en el evento <strong id="inicio-evento-nombre" style="color: var(--accent);">activo</strong>
+                        </p>
+                    </div>
                 </div>
 
                 <div style="display: flex; flex-direction: column; gap: 0.5rem;">
@@ -920,6 +923,43 @@
                     <div id="balance-list" style="display: flex; flex-direction: column; gap: 0.75rem;">
                         <!-- Se llena dinámicamente -->
                     </div>
+
+                    <div id="settle-suggestions" style="display: none; margin-top: 1rem;">
+                        <h4 style="font-size: 0.85rem; margin-bottom: 0.5rem;">Para saldar cuentas</h4>
+                        <div id="settle-suggestions-list" style="display: flex; flex-direction: column; gap: 0.5rem;"></div>
+                    </div>
+
+                    <div style="margin-top: 1.25rem; border-top: 1px solid var(--glass-border); padding-top: 1rem;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                            <h4 style="font-size: 0.85rem; margin: 0;">Pagos entre familias</h4>
+                            <button id="btn-toggle-payment" class="btn btn-secondary" style="padding: 0.4rem 0.75rem; font-size: 0.8rem; width: auto;"
+                                onclick="App.togglePaymentForm()">+ Registrar pago</button>
+                        </div>
+                        <div id="payment-form" style="display: none; margin-bottom: 0.75rem;">
+                            <div class="form-group">
+                                <label>Quién paga</label>
+                                <select id="pay-de"></select>
+                            </div>
+                            <div class="form-group">
+                                <label>Quién recibe</label>
+                                <select id="pay-a"></select>
+                            </div>
+                            <div class="form-group">
+                                <label>Importe (<span class="base-currency-label"></span>)</label>
+                                <input type="number" id="pay-importe" step="0.01" min="0" placeholder="0.00">
+                            </div>
+                            <div class="form-group">
+                                <label>Fecha</label>
+                                <input type="date" id="pay-fecha">
+                            </div>
+                            <div class="form-group">
+                                <label>Nota (opcional)</label>
+                                <input type="text" id="pay-nota" maxlength="255" placeholder="Ej: transferencia">
+                            </div>
+                            <button id="btn-save-payment" class="btn btn-primary" onclick="App.savePayment()">Guardar pago</button>
+                        </div>
+                        <div id="payment-list" style="display: flex; flex-direction: column;"></div>
+                    </div>
                 </div>
             </section>
 
@@ -1020,11 +1060,7 @@
                             style="width: 100%; border: 1px solid var(--error); color: var(--error);">Cerrar Sesión</button>
                     </div>
 
-                    <!-- Event Switcher (shown only if user has multiple events) -->
-                    <div id="profile-event-switcher" class="card" style="display:none; padding: 1.25rem;">
-                        <h4 style="margin-bottom: 1rem; color: var(--accent); font-size: 0.95rem; letter-spacing: 0.05em; text-transform: uppercase;">Cambiar Evento</h4>
-                        <div id="profile-event-list" style="display: flex; flex-direction: column; gap: 0.5rem;"></div>
-                    </div>
+
                 </div>
 
                 <!-- Tab 2: Usuarios y Permisos -->
@@ -1370,6 +1406,9 @@
                 eventos: [],
                 data: [],
                 pendingSync: JSON.parse(localStorage.getItem('pendingSync') || '[]'),
+                payments: [],
+                balanceFamilies: [],
+                settleTransfers: [],
                 chart: null,
 
                 async init() {
@@ -1505,13 +1544,30 @@
                     // Populate inicio welcome screen
                     const inicioAvatar = document.getElementById('inicio-avatar');
                     const inicioSaludo = document.getElementById('inicio-saludo');
-                    const inicioEvento = document.getElementById('inicio-evento');
                     const inicioBtnConfig = document.getElementById('inicio-btn-config');
                     const displayFirst = (user.display_name || user.username || 'Usuario').split(' ')[0];
                     if (inicioAvatar) inicioAvatar.innerText = displayFirst.charAt(0).toUpperCase();
                     if (inicioSaludo) inicioSaludo.innerText = `¡Hola ${displayFirst}!`;
+
+                    // Event selector on inicio screen
+                    const allViajes = user.all_viajes || [];
+                    const currentViaje = user.viaje || 'Evento Principal';
+                    const inicioSelect = document.getElementById('inicio-evento-select');
+                    const inicioSingle = document.getElementById('inicio-evento-single');
                     const inicioEventoNombre = document.getElementById('inicio-evento-nombre');
-                    if (inicioEventoNombre) inicioEventoNombre.innerText = user.viaje || 'Evento Principal';
+
+                    if (allViajes.length > 1 && inicioSelect && inicioSingle) {
+                        inicioSelect.style.display = 'inline-block';
+                        inicioSingle.style.display = 'none';
+                        inicioSelect.innerHTML = allViajes.map(ev => 
+                            `<option value="${ev}" ${ev === currentViaje ? 'selected' : ''}>📌 ${ev}</option>`
+                        ).join('');
+                    } else {
+                        if (inicioSelect) inicioSelect.style.display = 'none';
+                        if (inicioSingle) inicioSingle.style.display = 'inline-block';
+                        if (inicioEventoNombre) inicioEventoNombre.innerText = currentViaje;
+                    }
+
                     const inicioBtnConversor = document.getElementById('inicio-btn-conversor');
                     if (inicioBtnConversor) inicioBtnConversor.style.display = settings?.multiCurrencyEnabled ? 'flex' : 'none';
                     if (inicioBtnConfig) inicioBtnConfig.style.display = (user.isAdmin || user.can_manage_users) ? 'flex' : 'none';
@@ -1532,25 +1588,7 @@
                     if (viajeEl) viajeEl.innerText = user.viaje || 'Viaje Principal';
                     if (avatarEl) avatarEl.innerText = display.charAt(0).toUpperCase();
 
-                    // Event switcher
-                    const allViajes = user.all_viajes || [];
-                    const switcher = document.getElementById('profile-event-switcher');
-                    const list = document.getElementById('profile-event-list');
-                    if (switcher && list && allViajes.length > 1) {
-                        switcher.style.display = '';
-                        list.innerHTML = '';
-                        allViajes.forEach(ev => {
-                            const isActive = ev === (user.viaje || '');
-                            const btn = document.createElement('button');
-                            btn.className = 'btn';
-                            btn.style.cssText = `text-align:left; justify-content:space-between; display:flex; align-items:center; gap:0.5rem; padding: 0.65rem 1rem; background:${isActive ? 'rgba(99,102,241,0.2)' : 'rgba(255,255,255,0.03)'}; border: 1px solid ${isActive ? 'var(--primary)' : 'var(--glass-border)'}; color:${isActive ? 'var(--text)' : 'var(--text-dim)'}; border-radius:0.6rem; font-weight:${isActive ? '600' : '400'};`;
-                            btn.innerHTML = `<span>📌 ${ev}</span>${isActive ? '<span style="font-size:0.75rem;color:var(--accent);">Activo</span>' : ''}`;
-                            if (!isActive) btn.onclick = () => App.switchEvent(ev);
-                            list.appendChild(btn);
-                        });
-                    } else if (switcher) {
-                        switcher.style.display = 'none';
-                    }
+
                 },
 
                 applyPermissions() {
@@ -1641,6 +1679,7 @@
                         const res = await fetch(this.config.gasUrl, {
                             method: 'POST',
                             credentials: 'same-origin',
+                            headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ action: 'switch_event', nombre })
                         });
                         const data = await res.json();
@@ -1651,7 +1690,7 @@
                         this.populateCategories();
                         this.updateCurrencySelects();
                         this.showToast(`Evento cambiado a: ${nombre}`, 'success');
-                        this.showSection('registro');
+                        this.showSection('inicio');
                     } catch (err) {
                         this.showToast('Error al cambiar evento: ' + err.message, 'error');
                     } finally {
@@ -2757,23 +2796,197 @@
 
                     // --- Balance de Cuentas ---
                     if (sharedMode) {
+                        await this.fetchPayments();
                         this.calculateBalance(familyTotals, totalGeneral, baseCode);
                     }
+                },
+
+                async fetchPayments() {
+                    try {
+                        const res = await fetch(`${this.config.gasUrl}?type=pagos`, { credentials: 'same-origin' });
+                        const rows = res.ok ? await res.json() : [];
+                        this.payments = Array.isArray(rows) ? rows : [];
+                    } catch (err) {
+                        console.error('Error fetching payments:', err);
+                        this.payments = this.payments || [];
+                    }
+                },
+
+                fmtMoney(n) {
+                    return n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                },
+
+                escHtml(s) {
+                    return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+                },
+
+                togglePaymentForm(forceOpen, prefill) {
+                    const form = document.getElementById('payment-form');
+                    const open = forceOpen === undefined ? form.style.display === 'none' : forceOpen;
+                    form.style.display = open ? '' : 'none';
+                    document.getElementById('btn-toggle-payment').innerText = open ? 'Cancelar' : '+ Registrar pago';
+                    if (!open) return;
+
+                    const fams = this.balanceFamilies || [];
+                    const opts = fams.map(f => `<option value="${this.escHtml(f)}">${this.escHtml(f)}</option>`).join('');
+                    const de = document.getElementById('pay-de');
+                    const a = document.getElementById('pay-a');
+                    de.innerHTML = opts;
+                    a.innerHTML = opts;
+                    if (fams.length > 1) a.selectedIndex = 1;
+                    document.getElementById('pay-importe').value = '';
+                    document.getElementById('pay-nota').value = '';
+                    document.getElementById('pay-fecha').value = new Date().toISOString().split('T')[0];
+                    if (prefill) {
+                        de.value = prefill.de;
+                        a.value = prefill.a;
+                        document.getElementById('pay-importe').value = prefill.importe.toFixed(2);
+                    }
+                },
+
+                async savePayment() {
+                    const de = document.getElementById('pay-de').value;
+                    const a = document.getElementById('pay-a').value;
+                    const importe = parseFloat(document.getElementById('pay-importe').value);
+
+                    if (!de || !a || de === a) {
+                        this.showToast('Elige dos familias distintas', 'error');
+                        return;
+                    }
+                    if (isNaN(importe) || importe <= 0) {
+                        this.showToast('Ingresa un importe válido', 'error');
+                        return;
+                    }
+
+                    const btn = document.getElementById('btn-save-payment');
+                    btn.disabled = true;
+                    try {
+                        const res = await fetch(this.config.gasUrl, {
+                            method: 'POST',
+                            credentials: 'same-origin',
+                            body: JSON.stringify({
+                                action: 'create_payment',
+                                de, a, importe,
+                                fecha: document.getElementById('pay-fecha').value,
+                                nota: document.getElementById('pay-nota').value
+                            })
+                        });
+                        const resData = await res.json();
+                        if (resData.status !== 'success') throw new Error(resData.message || 'Error desconocido');
+                        this.showToast('Pago registrado', 'success');
+                        this.togglePaymentForm(false);
+                        await this.loadDashboard();
+                    } catch (err) {
+                        this.showToast('Error guardando pago: ' + err.message, 'error');
+                    } finally {
+                        btn.disabled = false;
+                    }
+                },
+
+                async deletePayment(id) {
+                    if (!confirm('¿Eliminar este pago? Los saldos se recalcularán.')) return;
+                    try {
+                        const res = await fetch(this.config.gasUrl, {
+                            method: 'POST',
+                            credentials: 'same-origin',
+                            body: JSON.stringify({ action: 'delete_payment', id })
+                        });
+                        const resData = await res.json();
+                        if (resData.status !== 'success') throw new Error(resData.message || 'Error desconocido');
+                        this.showToast('Pago eliminado', 'success');
+                        await this.loadDashboard();
+                    } catch (err) {
+                        this.showToast('Error eliminando pago: ' + err.message, 'error');
+                    }
+                },
+
+                renderPayments(baseCode) {
+                    const canEdit = this.currentUser?.isAdmin || this.currentUser?.can_edit_data;
+                    document.getElementById('btn-toggle-payment').style.display = canEdit ? '' : 'none';
+                    const list = document.getElementById('payment-list');
+                    const payments = this.payments || [];
+                    if (!payments.length) {
+                        list.innerHTML = '<div class="text-dim" style="font-size: 0.8rem;">Aún no hay pagos registrados.</div>';
+                        return;
+                    }
+                    list.innerHTML = payments.map(p => `
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0; border-bottom: 1px solid rgba(255,255,255,0.05); gap: 0.5rem;">
+                            <div style="min-width: 0;">
+                                <div style="font-size: 0.85rem;"><span style="text-transform: capitalize;">${this.escHtml(p.De)}</span> → <span style="text-transform: capitalize;">${this.escHtml(p.A)}</span></div>
+                                <div class="text-dim" style="font-size: 0.7rem;">${this.escHtml(String(p.Fecha).slice(0, 10))}${p.Nota ? ' · ' + this.escHtml(p.Nota) : ''}</div>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                <span style="font-weight: 600;">${this.fmtMoney(parseFloat(p.ImporteBase) || 0)} ${this.escHtml(baseCode)}</span>
+                                ${canEdit ? `<button class="btn btn-secondary" style="padding: 0.2rem 0.5rem; width: auto; color: var(--error); border-color: var(--error);" onclick="App.deletePayment('${this.escHtml(p.ID)}')">X</button>` : ''}
+                            </div>
+                        </div>`).join('');
+                },
+
+                renderSettlements(net, baseCode) {
+                    // Algoritmo voraz: el que más debe paga al que más tiene a favor
+                    const debtors = [], creditors = [];
+                    Object.entries(net).forEach(([f, v]) => {
+                        if (v < -0.005) debtors.push({ f, v: -v });
+                        else if (v > 0.005) creditors.push({ f, v });
+                    });
+                    debtors.sort((x, y) => y.v - x.v);
+                    creditors.sort((x, y) => y.v - x.v);
+
+                    const transfers = [];
+                    let i = 0, j = 0;
+                    while (i < debtors.length && j < creditors.length) {
+                        const amt = Math.min(debtors[i].v, creditors[j].v);
+                        if (amt > 0.005) transfers.push({ de: debtors[i].f, a: creditors[j].f, importe: amt });
+                        debtors[i].v -= amt;
+                        creditors[j].v -= amt;
+                        if (debtors[i].v < 0.005) i++;
+                        if (creditors[j].v < 0.005) j++;
+                    }
+                    this.settleTransfers = transfers;
+
+                    const box = document.getElementById('settle-suggestions');
+                    const list = document.getElementById('settle-suggestions-list');
+                    const canEdit = this.currentUser?.isAdmin || this.currentUser?.can_edit_data;
+                    box.style.display = transfers.length ? '' : 'none';
+                    list.innerHTML = transfers.map((t, idx) => `
+                        <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; font-size: 0.85rem;">
+                            <span><b style="text-transform: capitalize;">${this.escHtml(t.de)}</b> paga ${this.fmtMoney(t.importe)} ${this.escHtml(baseCode)} a <b style="text-transform: capitalize;">${this.escHtml(t.a)}</b></span>
+                            ${canEdit ? `<button class="btn btn-secondary" style="padding: 0.3rem 0.6rem; width: auto; font-size: 0.75rem;" onclick="App.prefillSettlement(${idx})">Registrar</button>` : ''}
+                        </div>`).join('');
+                },
+
+                prefillSettlement(idx) {
+                    const t = this.settleTransfers?.[idx];
+                    if (t) this.togglePaymentForm(true, t);
                 },
 
                 calculateBalance(familyTotals, totalGeneral, baseCode) {
                     const families = Object.keys(familyTotals);
                     const numFamilies = families.length;
                     const average = numFamilies > 0 ? totalGeneral / numFamilies : 0;
+                    this.balanceFamilies = families;
+
+                    // Saldo neto = gastado - promedio + pagos hechos - pagos recibidos
+                    const net = {};
+                    families.forEach(f => { net[f] = familyTotals[f] - average; });
+                    (this.payments || []).forEach(p => {
+                        const de = String(p.De).trim().toLowerCase();
+                        const a = String(p.A).trim().toLowerCase();
+                        const amt = parseFloat(p.ImporteBase) || 0;
+                        if (de in net) net[de] += amt;
+                        if (a in net) net[a] -= amt;
+                    });
 
                     document.getElementById('balance-average-value').innerText = `${average.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${baseCode}`;
 
                     const list = document.getElementById('balance-list');
                     list.innerHTML = '';
 
+                    this.renderPayments(baseCode);
+                    this.renderSettlements(net, baseCode);
+
                     families.forEach(family => {
-                        const total = familyTotals[family];
-                        const diff = total - average;
+                        const diff = net[family];
                         const isPositive = diff >= 0;
 
                         const div = document.createElement('div');
@@ -2870,40 +3083,6 @@
                     const loginBtn = document.getElementById('login-btn');
                     const loginUsuario = document.getElementById('login-usuario');
                     const loginClave = document.getElementById('login-clave');
-                    const loginEvento = document.getElementById('login-evento');
-
-                    const checkUserEvents = async () => {
-                        const username = loginUsuario.value.trim();
-                        if (!username) return;
-                        try {
-                            const res = await fetch('api.php', {
-                                method: 'POST',
-                                credentials: 'same-origin',
-                                body: JSON.stringify({ action: 'check_user', username })
-                            });
-                            const data = await res.json();
-                            const wrapper = document.getElementById('login-evento-wrapper');
-                            if (data.status === 'success' && data.eventos && data.eventos.length > 1) {
-                                loginEvento.innerHTML = data.eventos.map(e => `<option value="${e}">${e}</option>`).join('');
-                                wrapper.style.display = 'block';
-                            } else {
-                                wrapper.style.display = 'none';
-                                loginEvento.innerHTML = data.eventos && data.eventos.length === 1
-                                    ? `<option value="${data.eventos[0]}">${data.eventos[0]}</option>`
-                                    : '';
-                            }
-                        } catch (e) { console.warn('check_user error', e); }
-                    };
-
-                    // Disparar al salir del campo (Tab o clic afuera)
-                    loginUsuario.addEventListener('blur', checkUserEvents);
-
-                    // Disparar también al escribir (debounce 600ms)
-                    let debounceTimer;
-                    loginUsuario.addEventListener('input', () => {
-                        clearTimeout(debounceTimer);
-                        debounceTimer = setTimeout(checkUserEvents, 600);
-                    });
 
                     loginBtn.addEventListener('click', () => this.handleLogin());
                     loginClave.addEventListener('keypress', (e) => {
@@ -2918,7 +3097,7 @@
                             return;
                         }
                     } catch (err) {
-                        console.warn('No se pudo recuperar sesi?n', err);
+                        console.warn('No se pudo recuperar sesión', err);
                     }
 
                     this.showLogin();
@@ -2928,6 +3107,7 @@
                     const usuario = document.getElementById('login-usuario').value.trim();
                     const clave = document.getElementById('login-clave').value;
                     const errorDiv = document.getElementById('login-error');
+                    const loginBtn = document.getElementById('login-btn');
 
                     errorDiv.classList.remove('show');
 
@@ -2937,47 +3117,30 @@
                         return;
                     }
 
-                    // Si el selector de eventos no se cargó aún (blur no se disparó), hacerlo ahora
-                    const wrapper = document.getElementById('login-evento-wrapper');
-                    if (wrapper.style.display === 'none' || wrapper.style.display === '') {
-                        try {
-                            const chk = await fetch('api.php', {
-                                method: 'POST',
-                                credentials: 'same-origin',
-                                body: JSON.stringify({ action: 'check_user', username: usuario })
-                            });
-                            const chkData = await chk.json();
-                            const loginEvento = document.getElementById('login-evento');
-                            if (chkData.status === 'success' && chkData.eventos && chkData.eventos.length > 1) {
-                                loginEvento.innerHTML = chkData.eventos.map(e => `<option value="${e}">${e}</option>`).join('');
-                                wrapper.style.display = 'block';
-                                // Mostrar al usuario para que elija y detener el login
-                                errorDiv.textContent = 'Seleccioná el evento y volvé a ingresar';
-                                errorDiv.classList.add('show');
-                                return;
-                            } else if (chkData.eventos && chkData.eventos.length === 1) {
-                                loginEvento.innerHTML = `<option value="${chkData.eventos[0]}">${chkData.eventos[0]}</option>`;
-                            }
-                        } catch (e) { /* continuar igual */ }
-                    }
+                    loginBtn.disabled = true;
+                    loginBtn.textContent = 'Ingresando...';
 
                     try {
                         const res = await fetch('api.php', {
                             method: 'POST',
                             credentials: 'same-origin',
-                            body: JSON.stringify({ action: 'login', username: usuario, password: clave, evento: document.getElementById('login-evento').value })
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ action: 'login', username: usuario, password: clave })
                         });
                         const data = await res.json();
                         if (data.status !== 'success') throw new Error(data.message || 'Credenciales incorrectas');
                         this.showApp(data.user, data.settings);
                     } catch (err) {
-                        errorDiv.textContent = err.message || 'No se pudo iniciar sesi?n';
+                        console.error('Login error:', err);
+                        errorDiv.textContent = err.message || 'No se pudo conectar con el servidor';
                         errorDiv.classList.add('show');
+                        loginBtn.disabled = false;
+                        loginBtn.textContent = 'Ingresar';
                     }
                 },
 
                 async logout() {
-                    if (!confirm('?Seguro que deseas cerrar sesi?n?')) return;
+                    if (!confirm('¿Seguro que deseas cerrar sesión?')) return;
                     try {
                         await fetch('api.php', {
                             method: 'POST',

@@ -12,3 +12,6 @@ Thumbs.db
 # Environment / secrets (si en algún momento agregas uno)
 .env
 .env.local
+
+# Credenciales de la base (solo en el server)
+config.local.php
