@@ -6,11 +6,49 @@
 
 declare(strict_types=1);
 
+// Sesión persistente: el login se mantiene entre cierres del navegador (90 días desde el último uso)
+$sessionLifetime = 60 * 60 * 24 * 90;
+ini_set('session.gc_maxlifetime', (string)$sessionLifetime);
+ini_set('session.gc_probability', '1');
+ini_set('session.gc_divisor', '100');
+
+// Carpeta propia de sesiones, para que el limpiador del hosting no las borre a los pocos minutos
+$sessionDir = __DIR__ . '/sessions';
+if (!is_dir($sessionDir)) {
+    @mkdir($sessionDir, 0700, true);
+}
+if (is_dir($sessionDir) && is_writable($sessionDir)) {
+    if (!is_file($sessionDir . '/.htaccess')) {
+        @file_put_contents($sessionDir . '/.htaccess', "<IfModule mod_authz_core.c>\nRequire all denied\n</IfModule>\n<IfModule !mod_authz_core.c>\nDeny from all\n</IfModule>\n");
+    }
+    session_save_path($sessionDir);
+}
+
+$sessionCookie = [
+    'lifetime' => $sessionLifetime,
+    'path' => '/',
+    'httponly' => true,
+    'samesite' => 'Lax',
+    'secure' => !empty($_SERVER['HTTPS'])
+];
+
 session_start([
+    'cookie_lifetime' => $sessionLifetime,
     'cookie_httponly' => true,
     'cookie_samesite' => 'Lax',
     'cookie_secure' => !empty($_SERVER['HTTPS'])
 ]);
+
+// Renovar la cookie en cada uso para que el plazo corra desde la última visita
+if (session_id() !== '') {
+    setcookie(session_name(), session_id(), [
+        'expires' => time() + $sessionLifetime,
+        'path' => $sessionCookie['path'],
+        'httponly' => $sessionCookie['httponly'],
+        'samesite' => $sessionCookie['samesite'],
+        'secure' => $sessionCookie['secure']
+    ]);
+}
 
 header('Content-Type: application/json; charset=utf-8');
 $allowedOrigin = getenv('VACACIONES_ALLOWED_ORIGIN') ?: '';
@@ -382,6 +420,25 @@ if ($method === 'GET') {
         require_admin($user);
         $stmt = $pdo->query("SELECT id, nombre, tipo, categorias, familias, multi_moneda, moneda_defecto FROM eventos ORDER BY nombre");
         json_out($stmt->fetchAll());
+    }
+
+    if ($type === 'familias') {
+        require_view($user);
+        $stmt = $pdo->prepare("SELECT familias FROM eventos WHERE nombre = ?");
+        $stmt->execute([$user['viaje']]);
+        $fams = array_map('trim', explode(',', (string)$stmt->fetchColumn()));
+        $stmt = $pdo->prepare("SELECT DISTINCT apellido FROM gastos WHERE viaje = ?");
+        $stmt->execute([$user['viaje']]);
+        foreach ($stmt->fetchAll(PDO::FETCH_COLUMN) as $a) {
+            $fams[] = trim((string)$a);
+        }
+        $seen = [];
+        foreach ($fams as $f) {
+            if ($f !== '') {
+                $seen[mb_strtolower($f)] = true;
+            }
+        }
+        json_out(array_keys($seen));
     }
 
     if ($type === 'pagos') {

@@ -1527,6 +1527,10 @@
 
                 applySession(user, settings) {
                     this.currentUser = user;
+                    // Recordar el evento activo para el próximo inicio de sesión
+                    try {
+                        if (user.viaje) localStorage.setItem('vacaciones_last_evento', user.viaje);
+                    } catch (e) { /* sin almacenamiento local */ }
                     if (settings) this.settings = { ...this.settings, ...settings };
                     this.config.apellido = user.family_name || '';
                     this.config.nombre = user.display_name || user.username || '';
@@ -1686,6 +1690,7 @@
                         if (data.status !== 'success') throw new Error(data.message);
                         // Reload data and re-apply session with new event context
                         this.data = [];
+                        this.clearDashboard();
                         this.applySession(data.user, data.settings);
                         this.populateCategories();
                         this.updateCurrencySelects();
@@ -2761,7 +2766,18 @@
                         await this.fetchData();
                     }
 
-                    if (!this.data.length) return;
+                    if (!this.data.length) {
+                        // Sin gastos: limpiar lo que quedó del evento anterior
+                        this.clearDashboard();
+                        // igual se muestran familias y pagos
+                        if (sharedMode) {
+                            const base = this.settings.multiCurrencyEnabled ? (this.config.currencies.find(c => c.isBase)?.code || '') : this.settings.defaultCurrency;
+                            document.querySelectorAll('.base-currency-label').forEach(el => el.innerText = base);
+                            await this.fetchPayments();
+                            await this.calculateBalance({}, 0, base);
+                        }
+                        return;
+                    }
 
                     // Agregaciones
                     const familyTotals = {};
@@ -2797,7 +2813,39 @@
                     // --- Balance de Cuentas ---
                     if (sharedMode) {
                         await this.fetchPayments();
-                        this.calculateBalance(familyTotals, totalGeneral, baseCode);
+                        await this.calculateBalance(familyTotals, totalGeneral, baseCode);
+                    }
+                },
+
+                clearDashboard() {
+                    ['chart', 'categoryChart'].forEach(key => {
+                        if (this[key]) {
+                            this[key].destroy();
+                            this[key] = null;
+                        }
+                    });
+                    ['chart-canvas', 'category-chart-canvas'].forEach(id => {
+                        const canvas = document.getElementById(id);
+                        canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+                    });
+                    document.getElementById('dashboard-total-value').innerText = '0,00';
+                    document.getElementById('balance-list').innerHTML = '';
+                    document.getElementById('balance-average-value').innerText = '0,00';
+                    document.getElementById('settle-suggestions').style.display = 'none';
+                    document.getElementById('payment-list').innerHTML = '';
+                    document.getElementById('payment-form').style.display = 'none';
+                    document.getElementById('btn-toggle-payment').innerText = '+ Registrar pago';
+                    this.payments = [];
+                },
+
+                async fetchFamilies() {
+                    try {
+                        const res = await fetch(`${this.config.gasUrl}?type=familias`, { credentials: 'same-origin' });
+                        const rows = res.ok ? await res.json() : [];
+                        return Array.isArray(rows) ? rows.filter(f => typeof f === 'string').map(f => f.trim().toLowerCase()).filter(Boolean) : [];
+                    } catch (err) {
+                        console.error('Error fetching families:', err);
+                        return [];
                     }
                 },
 
@@ -2913,7 +2961,7 @@
                         <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0; border-bottom: 1px solid rgba(255,255,255,0.05); gap: 0.5rem;">
                             <div style="min-width: 0;">
                                 <div style="font-size: 0.85rem;"><span style="text-transform: capitalize;">${this.escHtml(p.De)}</span> → <span style="text-transform: capitalize;">${this.escHtml(p.A)}</span></div>
-                                <div class="text-dim" style="font-size: 0.7rem;">${this.escHtml(String(p.Fecha).slice(0, 10))}${p.Nota ? ' · ' + this.escHtml(p.Nota) : ''}</div>
+                                <div class="text-dim" style="font-size: 0.7rem;">${this.escHtml(this.formatDate(p.Fecha))}${p.Nota ? ' · ' + this.escHtml(p.Nota) : ''}</div>
                             </div>
                             <div style="display: flex; align-items: center; gap: 0.5rem;">
                                 <span style="font-weight: 600;">${this.fmtMoney(parseFloat(p.ImporteBase) || 0)} ${this.escHtml(baseCode)}</span>
@@ -2960,7 +3008,17 @@
                     if (t) this.togglePaymentForm(true, t);
                 },
 
-                calculateBalance(familyTotals, totalGeneral, baseCode) {
+                async calculateBalance(familyTotals, totalGeneral, baseCode) {
+                    // Familias con gastos + familias del evento que aún no gastaron
+                    const extra = await this.fetchFamilies();
+                    extra.forEach(f => { if (!(f in familyTotals)) familyTotals[f] = 0; });
+                    // Una familia que participa en un pago también cuenta, aunque no tenga gastos
+                    (this.payments || []).forEach(p => {
+                        [p.De, p.A].forEach(f => {
+                            const k = String(f).trim().toLowerCase();
+                            if (k && !(k in familyTotals)) familyTotals[k] = 0;
+                        });
+                    });
                     const families = Object.keys(familyTotals);
                     const numFamilies = families.length;
                     const average = numFamilies > 0 ? totalGeneral / numFamilies : 0;
@@ -2986,7 +3044,8 @@
                     this.renderSettlements(net, baseCode);
 
                     families.forEach(family => {
-                        const diff = net[family];
+                        const settled = Math.abs(net[family]) < 0.005;
+                        const diff = settled ? 0 : net[family];
                         const isPositive = diff >= 0;
 
                         const div = document.createElement('div');
@@ -3000,10 +3059,10 @@
                         <span style="text-transform: capitalize; font-weight: 500;">${family}</span>
                         <div style="text-align: right;">
                             <div style="color: ${isPositive ? 'var(--success)' : 'var(--error)'}; font-weight: 700; font-size: 0.95rem;">
-                                ${isPositive ? '+' : ''}${diff.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${baseCode}
+                                ${isPositive && !settled ? '+' : ''}${diff.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${baseCode}
                             </div>
                             <div class="text-dim" style="font-size: 0.7rem;">
-                                ${isPositive ? 'A favor' : 'Debe poner'}
+                                ${settled ? 'Saldado' : (isPositive ? 'A favor' : 'Debe poner')}
                             </div>
                         </div>
                     `;
@@ -3052,14 +3111,14 @@
 
                 formatDate(iso) {
                     if (!iso) return '';
-                    // Si ya es un string YYYY-MM-DD, formatear directamente
+                    // Formato argentino dd/mm/aaaa. Si ya es un string YYYY-MM-DD (con o sin hora), se formatea directo para evitar desfases
                     if (typeof iso === 'string' && /^\d{4}-\d{2}-\d{2}/.test(iso)) {
-                        const parts = iso.split('T')[0].split('-');
-                        return `${parts[2]}/${parts[1]}`;
+                        const parts = iso.slice(0, 10).split('-');
+                        return `${parts[2]}/${parts[1]}/${parts[0]}`;
                     }
                     const d = new Date(iso);
                     if (isNaN(d.getTime())) return iso;
-                    return d.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' });
+                    return d.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' });
                 },
 
                 toISODate(val) {
@@ -3125,7 +3184,12 @@
                             method: 'POST',
                             credentials: 'same-origin',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ action: 'login', username: usuario, password: clave })
+                            body: JSON.stringify({
+                                action: 'login',
+                                username: usuario,
+                                password: clave,
+                                evento: (() => { try { return localStorage.getItem('vacaciones_last_evento') || ''; } catch (e) { return ''; } })()
+                            })
                         });
                         const data = await res.json();
                         if (data.status !== 'success') throw new Error(data.message || 'Credenciales incorrectas');

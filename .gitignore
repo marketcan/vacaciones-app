@@ -15,3 +15,6 @@ Thumbs.db
 
 # Credenciales de la base (solo en el server)
 config.local.php
+
+# Sesiones PHP (solo en el server)
+sessions/
